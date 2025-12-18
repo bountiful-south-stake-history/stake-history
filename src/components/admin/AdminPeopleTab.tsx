@@ -102,83 +102,157 @@ export function AdminPeopleTab({ onActionComplete }: AdminPeopleTabProps) {
       </div>
 
       <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Original Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corrected Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredPeople.map((person) => {
-              const isEditing = editingId === person.id
-              return (
-                <tr key={person.id} className="hover:bg-gray-50">
-                  {isEditing ? (
-                    <>
-                      <td className="px-4 py-3">
-                        <input
-                          type="text"
-                          value={editData.full_name}
-                          onChange={(e) => setEditData({ ...editData, full_name: e.target.value })}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                          placeholder="Full name"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="text"
-                          value={editData.display_name}
-                          onChange={(e) => setEditData({ ...editData, display_name: e.target.value })}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                          placeholder="Display name"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleSave(person.id)}
-                            disabled={processing === person.id}
-                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+        <div className="hidden md:block overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Original Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corrected Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredPeople.map((person) => {
+                const isEditing = editingId === person.id
+                return (
+                  <tr key={person.id} className="hover:bg-gray-50">
+                    {isEditing ? (
+                      <>
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={editData.full_name}
+                            onChange={(e) => setEditData({ ...editData, full_name: e.target.value })}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            placeholder="Full name"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={editData.display_name}
+                            onChange={(e) => setEditData({ ...editData, display_name: e.target.value })}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            placeholder="Display name"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSave(person.id)}
+                              disabled={processing === person.id}
+                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          <Link
+                            to={`/person/${person.id}`}
+                            className="text-primary-600 hover:text-primary-700 hover:underline"
                           >
-                            Save
-                          </button>
+                            {person.full_name}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{person.display_name || '-'}</td>
+                        <td className="px-4 py-3">
                           <button
-                            onClick={cancelEdit}
-                            className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
+                            onClick={() => startEdit(person)}
+                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
                           >
-                            Cancel
+                            Edit
                           </button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        <Link
-                          to={`/person/${person.id}`}
-                          className="text-primary-600 hover:text-primary-700 hover:underline"
-                        >
-                          {person.full_name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{person.display_name || '-'}</td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => startEdit(person)}
-                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="md:hidden divide-y divide-gray-200">
+          {filteredPeople.map((person) => {
+            const isEditing = editingId === person.id
+            return (
+              <div key={person.id} className="p-4">
+                {isEditing ? (
+                  <>
+                    <div className="mb-3">
+                      <label className="text-xs text-gray-500 uppercase">Original Name</label>
+                      <input
+                        type="text"
+                        value={editData.full_name}
+                        onChange={(e) => setEditData({ ...editData, full_name: e.target.value })}
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                        placeholder="Full name"
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="text-xs text-gray-500 uppercase">Corrected Name</label>
+                      <input
+                        type="text"
+                        value={editData.display_name}
+                        onChange={(e) => setEditData({ ...editData, display_name: e.target.value })}
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                        placeholder="Display name"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleSave(person.id)}
+                        disabled={processing === person.id}
+                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="mb-2">
+                      <Link
+                        to={`/person/${person.id}`}
+                        className="text-base font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                      >
+                        {person.full_name}
+                      </Link>
+                    </div>
+                    <div className="mb-3">
+                      <span className="text-xs text-gray-500">Corrected: </span>
+                      <span className="text-sm text-gray-900">{person.display_name || '-'}</span>
+                    </div>
+                    <div>
+                      <button
+                        onClick={() => startEdit(person)}
+                        className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

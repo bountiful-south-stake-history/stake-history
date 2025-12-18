@@ -227,130 +227,262 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
 
       {selectedOrgId && callings.length > 0 && (
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Person</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sustained</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Released</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Presidency #</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {callings.map((calling) => {
-                const isEditing = editingId === calling.id
-                return (
-                  <tr key={calling.id} className="hover:bg-gray-50">
-                    {isEditing ? (
-                      <>
-                        <td className="px-4 py-3 text-sm text-gray-900">
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Person</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sustained</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Released</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Presidency #</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {callings.map((calling) => {
+                  const isEditing = editingId === calling.id
+                  return (
+                    <tr key={calling.id} className="hover:bg-gray-50">
+                      {isEditing ? (
+                        <>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            <Link
+                              to={`/person/${calling.person_id}`}
+                              className="text-primary-600 hover:text-primary-700 hover:underline"
+                            >
+                              {calling.person?.display_name || calling.person?.full_name}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{calling.position?.title}</td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="date"
+                              value={editData.sustained_date}
+                              onChange={(e) => setEditData({ ...editData, sustained_date: e.target.value })}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="date"
+                              value={editData.released_date}
+                              onChange={(e) => setEditData({ ...editData, released_date: e.target.value })}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-500 px-2 py-1 bg-gray-100 rounded">
+                                {calling.presidency_number || '-'}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setShowPresidencyModal(calling.id)
+                                  setPresidencyNewValue(calling.presidency_number?.toString() || '')
+                                  setPresidencyConfirmValue('')
+                                }}
+                                className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+                              >
+                                Fix #
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleSave(calling.id)}
+                                disabled={processing === calling.id}
+                                className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={cancelEdit}
+                                className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            <Link
+                              to={`/person/${calling.person_id}`}
+                              className="text-primary-600 hover:text-primary-700 hover:underline"
+                            >
+                              {calling.person?.display_name || calling.person?.full_name}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{calling.position?.title}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {calling.sustained_date ? new Date(calling.sustained_date).toLocaleDateString() : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {calling.released_date ? new Date(calling.released_date).toLocaleDateString() : 'Current'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{calling.presidency_number || '-'}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => startEdit(calling)}
+                                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(calling.id)}
+                                disabled={processing === calling.id}
+                                className={`px-3 py-1 rounded text-sm border disabled:opacity-50 ${
+                                  deleteConfirmState[calling.id] === 'warning'
+                                    ? 'bg-yellow-50 border-yellow-400 text-yellow-700 hover:bg-yellow-100'
+                                    : 'border-red-300 text-red-700 hover:bg-red-50'
+                                }`}
+                              >
+                                {deleteConfirmState[calling.id] === 'warning' ? 'Are you sure?' : 'Delete'}
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="md:hidden divide-y divide-gray-200">
+            {callings.map((calling) => {
+              const isEditing = editingId === calling.id
+              return (
+                <div key={calling.id} className="p-4">
+                  {isEditing ? (
+                    <>
+                      <div className="mb-3">
+                        <label className="text-xs text-gray-500 uppercase">Person</label>
+                        <div className="mt-1">
                           <Link
                             to={`/person/${calling.person_id}`}
-                            className="text-primary-600 hover:text-primary-700 hover:underline"
+                            className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
                           >
                             {calling.person?.display_name || calling.person?.full_name}
                           </Link>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{calling.position?.title}</td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="date"
-                            value={editData.sustained_date}
-                            onChange={(e) => setEditData({ ...editData, sustained_date: e.target.value })}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="date"
-                            value={editData.released_date}
-                            onChange={(e) => setEditData({ ...editData, released_date: e.target.value })}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500 px-2 py-1 bg-gray-100 rounded">
-                              {calling.presidency_number || '-'}
-                            </span>
-                            <button
-                              onClick={() => {
-                                setShowPresidencyModal(calling.id)
-                                setPresidencyNewValue(calling.presidency_number?.toString() || '')
-                                setPresidencyConfirmValue('')
-                              }}
-                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
-                            >
-                              Fix #
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleSave(calling.id)}
-                              disabled={processing === calling.id}
-                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          <Link
-                            to={`/person/${calling.person_id}`}
-                            className="text-primary-600 hover:text-primary-700 hover:underline"
+                        </div>
+                      </div>
+                      <div className="mb-3">
+                        <label className="text-xs text-gray-500 uppercase">Position</label>
+                        <div className="mt-1 text-sm text-gray-900">{calling.position?.title}</div>
+                      </div>
+                      <div className="mb-3">
+                        <label className="text-xs text-gray-500 uppercase">Sustained</label>
+                        <input
+                          type="date"
+                          value={editData.sustained_date}
+                          onChange={(e) => setEditData({ ...editData, sustained_date: e.target.value })}
+                          className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <label className="text-xs text-gray-500 uppercase">Released</label>
+                        <input
+                          type="date"
+                          value={editData.released_date}
+                          onChange={(e) => setEditData({ ...editData, released_date: e.target.value })}
+                          className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <label className="text-xs text-gray-500 uppercase">Presidency #</label>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="text-sm text-gray-900 px-2 py-1 bg-gray-100 rounded">
+                            {calling.presidency_number || '-'}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setShowPresidencyModal(calling.id)
+                              setPresidencyNewValue(calling.presidency_number?.toString() || '')
+                              setPresidencyConfirmValue('')
+                            }}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
                           >
-                            {calling.person?.display_name || calling.person?.full_name}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{calling.position?.title}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
+                            Fix #
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSave(calling.id)}
+                          disabled={processing === calling.id}
+                          className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mb-2">
+                        <Link
+                          to={`/person/${calling.person_id}`}
+                          className="text-base font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                        >
+                          {calling.person?.display_name || calling.person?.full_name}
+                        </Link>
+                      </div>
+                      <div className="mb-2">
+                        <span className="text-xs text-gray-500">Position: </span>
+                        <span className="text-sm text-gray-900">{calling.position?.title}</span>
+                      </div>
+                      <div className="mb-2">
+                        <span className="text-xs text-gray-500">Sustained: </span>
+                        <span className="text-sm text-gray-900">
                           {calling.sustained_date ? new Date(calling.sustained_date).toLocaleDateString() : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
+                        </span>
+                      </div>
+                      <div className="mb-2">
+                        <span className="text-xs text-gray-500">Released: </span>
+                        <span className="text-sm text-gray-900">
                           {calling.released_date ? new Date(calling.released_date).toLocaleDateString() : 'Current'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{calling.presidency_number || '-'}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => startEdit(calling)}
-                              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(calling.id)}
-                              disabled={processing === calling.id}
-                              className={`px-3 py-1 rounded text-sm border disabled:opacity-50 ${
-                                deleteConfirmState[calling.id] === 'warning'
-                                  ? 'bg-yellow-50 border-yellow-400 text-yellow-700 hover:bg-yellow-100'
-                                  : 'border-red-300 text-red-700 hover:bg-red-50'
-                              }`}
-                            >
-                              {deleteConfirmState[calling.id] === 'warning' ? 'Are you sure?' : 'Delete'}
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                        </span>
+                      </div>
+                      <div className="mb-3">
+                        <span className="text-xs text-gray-500">Presidency #: </span>
+                        <span className="text-sm text-gray-900">{calling.presidency_number || '-'}</span>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => startEdit(calling)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(calling.id)}
+                          disabled={processing === calling.id}
+                          className={`px-3 py-1 rounded text-sm border disabled:opacity-50 ${
+                            deleteConfirmState[calling.id] === 'warning'
+                              ? 'bg-yellow-50 border-yellow-400 text-yellow-700 hover:bg-yellow-100'
+                              : 'border-red-300 text-red-700 hover:bg-red-50'
+                          }`}
+                        >
+                          {deleteConfirmState[calling.id] === 'warning' ? 'Are you sure?' : 'Delete'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

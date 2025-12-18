@@ -193,7 +193,7 @@ export function AdminUsersTab() {
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full bg-white border border-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -348,6 +348,151 @@ export function AdminUsersTab() {
             })}
           </tbody>
         </table>
+      </div>
+
+      <div className="md:hidden space-y-3">
+        {users.map((user) => {
+          const isEditing = editingId === user.id
+          const isViewBlocked = user.view_blocked === true
+          return (
+            <div key={user.id} className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+              {isEditing ? (
+                <>
+                  <div className="mb-3">
+                    <span className="text-sm font-medium text-gray-900">{user.email}</span>
+                  </div>
+                  <div className="mb-3">
+                    <label className="text-xs text-gray-500 uppercase">Display Name</label>
+                    <input
+                      type="text"
+                      value={editDisplayName}
+                      onChange={(e) => setEditDisplayName(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                      placeholder="Display name (optional)"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <span className="text-xs text-gray-500">Role: </span>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded ${
+                        user.role === 'admin'
+                          ? 'bg-green-100 text-green-800'
+                          : user.role === 'contributor'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {user.role}
+                    </span>
+                  </div>
+                  <div className="mb-3">
+                    <span className="text-xs text-gray-500">View: </span>
+                    {isViewBlocked ? (
+                      <span className="text-sm text-red-600">🚫 Restricted</span>
+                    ) : (
+                      <span className="text-sm text-green-600">✅ Allowed</span>
+                    )}
+                  </div>
+                  <div className="mb-3">
+                    <span className="text-xs text-gray-500">Created: </span>
+                    <span className="text-sm text-gray-900">{new Date(user.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveDisplayName(user.id)}
+                      disabled={processing === user.id}
+                      className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-2">
+                    <span className="text-sm font-medium text-gray-900">{user.email}</span>
+                  </div>
+                  <div className="mb-2">
+                    <span className="text-xs text-gray-500">Name: </span>
+                    <span className="text-sm text-gray-900">
+                      {user.display_name || <span className="text-gray-400 italic">Not set</span>}
+                    </span>
+                  </div>
+                  <div className="mb-2">
+                    <span className="text-xs text-gray-500">Role: </span>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded ${
+                        user.role === 'admin'
+                          ? 'bg-green-100 text-green-800'
+                          : user.role === 'contributor'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {user.role}
+                    </span>
+                  </div>
+                  <div className="mb-2">
+                    <span className="text-xs text-gray-500">View: </span>
+                    {isViewBlocked ? (
+                      <span className="text-sm text-red-600">🚫 Restricted</span>
+                    ) : (
+                      <span className="text-sm text-green-600">✅ Allowed</span>
+                    )}
+                  </div>
+                  <div className="mb-3">
+                    <span className="text-xs text-gray-500">Created: </span>
+                    <span className="text-sm text-gray-900">{new Date(user.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => startEdit(user.id, user.display_name || '')}
+                      className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                    >
+                      Edit
+                    </button>
+                    {isViewBlocked ? (
+                      <button
+                        onClick={() => setShowRestoreModal(user.id)}
+                        disabled={processing === user.id}
+                        className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                      >
+                        Restore View
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowRestrictModal(user.id)}
+                        disabled={processing === user.id}
+                        className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700 disabled:opacity-50"
+                      >
+                        Restrict View
+                      </button>
+                    )}
+                    <button
+                      onClick={() => toggleAdmin(user.id, user.role)}
+                      disabled={processing === user.id || (user.id === currentUser?.id && user.role === 'admin')}
+                      className={`px-3 py-1 rounded text-sm disabled:opacity-50 ${
+                        user.role === 'admin'
+                          ? 'bg-red-600 text-white hover:bg-red-700'
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                      }`}
+                      title={user.id === currentUser?.id && user.role === 'admin' ? 'You cannot remove your own admin access' : ''}
+                    >
+                      {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {showRestrictModal && (() => {

@@ -626,7 +626,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
           {isPresidencyOrg ? (
             currentPresidencyCallings.length > 0 ? (
               <>
-                <div className="overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -676,6 +676,38 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                   </table>
                 </div>
 
+                <div className="md:hidden space-y-3">
+                  {currentPresidencyCallings.map((calling) => (
+                    <div key={calling.id} className="p-4 border border-gray-200 rounded-lg">
+                      <div className="mb-2">
+                        <span className="text-sm font-medium text-gray-900">{calling.position?.title}</span>
+                      </div>
+                      <div className="mb-2">
+                        <span className="text-base font-medium text-gray-900">
+                          {calling.person?.display_name || calling.person?.full_name}
+                        </span>
+                      </div>
+                      <div className="mb-3">
+                        <span className="text-xs text-gray-500">Sustained: </span>
+                        <span className="text-sm text-gray-900">
+                          {formatDate(calling.sustained_date, calling.sustained_precision)}
+                        </span>
+                      </div>
+                      <div>
+                        <button
+                          onClick={() => {
+                            setShowReleaseModal(calling)
+                            setReleaseDate(new Date().toISOString().split('T')[0])
+                          }}
+                          className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:underline"
+                        >
+                          Release
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="mt-6 flex gap-4">
                   <button
                     onClick={() => {
@@ -717,7 +749,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
           ) : (
             currentCallings.length > 0 ? (
               <>
-                <div className="overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -766,6 +798,39 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                <div className="md:hidden space-y-3">
+                  {currentCallings.map((calling) => (
+                    <div key={calling.id} className="p-4 border border-gray-200 rounded-lg">
+                      <div className="mb-2">
+                        <span className="text-xs text-gray-500">#</span>
+                        <span className="text-sm text-gray-900 ml-1">#{calling.presidency_number || '-'}</span>
+                      </div>
+                      <div className="mb-2">
+                        <span className="text-base font-medium text-gray-900">
+                          {calling.person?.display_name || calling.person?.full_name}
+                        </span>
+                      </div>
+                      <div className="mb-3">
+                        <span className="text-xs text-gray-500">Dates: </span>
+                        <span className="text-sm text-gray-900">
+                          {formatDate(calling.sustained_date, calling.sustained_precision)} – present
+                        </span>
+                      </div>
+                      <div>
+                        <button
+                          onClick={() => {
+                            setShowReleaseModal(calling)
+                            setReleaseDate(new Date().toISOString().split('T')[0])
+                          }}
+                          className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:underline"
+                        >
+                          Release
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 <div className="mt-6">
