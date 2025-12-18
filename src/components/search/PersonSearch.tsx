@@ -105,7 +105,7 @@ export function PersonSearch() {
   const displayResults = peopleWithCallings.slice(0, 10)
 
   return (
-    <div ref={searchRef} className="relative w-[350px] mx-auto mb-8">
+    <div ref={searchRef} className="relative w-full max-w-sm mx-auto mb-6 md:mb-8">
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <svg
