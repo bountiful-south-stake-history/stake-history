@@ -192,7 +192,7 @@ export function HomePage() {
               <section>
                 <div className="border-t border-gray-200 pt-6 mb-4">
                   <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Stake Leadership
+                    Stake
                   </h2>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
