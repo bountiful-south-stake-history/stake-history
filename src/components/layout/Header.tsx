@@ -109,9 +109,10 @@ export function Header() {
               {!loading && (
                 <>
                   {user ? (
-                    <div onClick={() => setMobileMenuOpen(false)}>
-                      <UserMenu user={user} />
-                    </div>
+                    <UserMenu 
+                      user={user} 
+                      onSignOut={() => setMobileMenuOpen(false)}
+                    />
                   ) : (
                     <button
                       onClick={() => {
