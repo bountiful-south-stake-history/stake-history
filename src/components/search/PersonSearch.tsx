@@ -105,11 +105,11 @@ export function PersonSearch() {
   const displayResults = peopleWithCallings.slice(0, 10)
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-sm mx-auto mb-6 md:mb-8">
+    <div ref={searchRef} className="relative w-full max-w-2xl mx-auto">
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           <svg
-            className="h-5 w-5 text-gray-400"
+            className="h-6 w-6 text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -135,7 +135,7 @@ export function PersonSearch() {
             }
           }}
           placeholder="Search for a person..."
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
+          className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white shadow-sm"
         />
       </div>
 
