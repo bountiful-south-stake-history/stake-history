@@ -120,7 +120,11 @@ export function AboutPage() {
       <section className="mb-8">
         <h2 className="text-2xl font-bold text-primary-700 mb-4">Contact</h2>
         <p className="text-gray-700">
-          For questions about this site or the historical records, please contact the Stake Executive Secretary through your ward clerk or bishop.
+          For questions about this site or the historical records, please contact the Stake Executive Secretary at{' '}
+          <a href="mailto:bountifulsouthstake@gmail.com" className="text-primary-600 hover:text-primary-700 underline">
+            bountifulsouthstake@gmail.com
+          </a>
+          .
         </p>
       </section>
 

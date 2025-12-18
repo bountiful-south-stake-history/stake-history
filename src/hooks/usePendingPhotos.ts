@@ -20,7 +20,21 @@ export function usePendingPhotos() {
       
       const { data: photosData, error: photosError } = await supabase
         .from('photos')
-        .select('*')
+        .select(`
+          id,
+          photo_url,
+          caption,
+          submitter_name,
+          submitter_email,
+          submitter_phone,
+          approximate_date,
+          event_context,
+          submitted_at,
+          status,
+          reviewed_at,
+          reviewed_by,
+          rejection_reason
+        `)
         .eq('status', 'pending')
         .order('submitted_at', { ascending: false })
 
@@ -29,9 +43,6 @@ export function usePendingPhotos() {
       console.log('Fetched photos data:', photosData)
       console.log('Number of photos:', photosData?.length)
 
-      // Note: Photos table may need a junction table for person relationships
-      // For now, assuming photos can be linked via person_id if needed
-      // Generate signed URLs for pending photos since they're in pending folder
       const photosWithPeople = await Promise.all(
         (photosData || []).map(async (photo) => {
           console.log('Processing photo:', {
@@ -40,6 +51,30 @@ export function usePendingPhotos() {
             caption: photo.caption,
             allKeys: Object.keys(photo),
           })
+          
+          const { data: photoPeopleData } = await supabase
+            .from('photo_people')
+            .select('person_id')
+            .eq('photo_id', photo.id)
+
+          const personNames: string[] = []
+          const personIds: string[] = []
+          
+          if (photoPeopleData && photoPeopleData.length > 0) {
+            const personIdsList = photoPeopleData.map((item: any) => item.person_id)
+            
+            const { data: peopleData } = await supabase
+              .from('people')
+              .select('id, full_name, display_name')
+              .in('id', personIdsList)
+            
+            if (peopleData) {
+              peopleData.forEach((person: any) => {
+                personIds.push(person.id)
+                personNames.push(person.display_name || person.full_name)
+              })
+            }
+          }
           
           let displayUrl = photo.photo_url
           
@@ -73,8 +108,8 @@ export function usePendingPhotos() {
             ...photo,
             photo_url: displayUrl, // Use signed URL if available
             file_url: displayUrl, // Map photo_url to file_url for compatibility
-            person_ids: [],
-            person_names: [],
+            person_ids: personIds,
+            person_names: personNames,
           }
         })
       )
