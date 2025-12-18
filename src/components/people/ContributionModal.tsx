@@ -649,7 +649,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
           )}
 
           <div className="mb-6">
-            <div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
+            <div className="grid grid-cols-2 md:flex gap-2 border-b border-gray-200">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
@@ -660,7 +660,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
                     setFormErrors({})
                   }}
                   disabled={submitting || success}
-                  className={`px-4 py-2 font-medium border-b-2 transition-colors disabled:opacity-50 whitespace-nowrap ${
+                  className={`px-4 py-3 min-h-[44px] font-medium border-b-2 transition-colors disabled:opacity-50 whitespace-nowrap text-center ${
                     contributionType === tab.id
                       ? 'border-primary-600 text-primary-700'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
