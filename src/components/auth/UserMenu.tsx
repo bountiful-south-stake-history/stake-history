@@ -13,20 +13,26 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { isAdmin } = useAdmin()
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
+    if (!showDropdown) return
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false)
       }
     }
 
-    if (showDropdown) {
+    timeoutRef.current = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside)
       document.addEventListener('touchstart', handleClickOutside)
-    }
+    }, 150)
 
     return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('touchstart', handleClickOutside)
     }
@@ -38,20 +44,16 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
     onSignOut?.()
   }
 
-  const handleToggleDropdown = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleToggleDropdown = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setShowDropdown(!showDropdown)
-  }
-
-  const handleDropdownClick = (e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation()
+    e.preventDefault()
+    setShowDropdown((prev) => !prev)
   }
 
   return (
-    <div className="relative" ref={dropdownRef} onClick={handleDropdownClick} onTouchStart={handleDropdownClick}>
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={handleToggleDropdown}
-        onTouchStart={handleToggleDropdown}
         className="flex items-center gap-2 hover:text-accent-100 transition-colors text-left"
       >
         <span className="text-sm">{user.email}</span>
@@ -66,7 +68,10 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[100]">
+        <div 
+          className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[100]"
+          onClick={(e) => e.stopPropagation()}
+        >
           {isAdmin && (
             <Link
               to="/admin"
