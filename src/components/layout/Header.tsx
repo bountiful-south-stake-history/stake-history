@@ -17,7 +17,7 @@ export function Header() {
         <div className="flex items-center justify-between">
           <Link 
             to="/" 
-            className="text-xl md:text-2xl font-bold hover:text-accent-100 transition-colors leading-tight"
+            className="text-xl md:text-2xl font-bold font-serif hover:text-accent-100 transition-colors leading-tight"
           >
             Bountiful Utah South Stake History
           </Link>

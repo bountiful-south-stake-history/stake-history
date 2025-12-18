@@ -6,6 +6,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Roboto', 'sans-serif'],
+        serif: ['Merriweather', 'serif'],
+      },
       colors: {
         primary: {
           50: '#f0f4f8',
