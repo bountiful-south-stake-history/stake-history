@@ -15,29 +15,39 @@ export function usePersonPhotos(personId: string) {
 
     async function fetchPhotos() {
       try {
-        // Note: Photos table structure may need person_id column or junction table
-        // For now, assuming photos table has person_id or needs to be linked differently
-        // This may need adjustment based on actual schema
         const { data: photosData, error: photosError } = await supabase
-          .from('photos')
-          .select('*')
-          .eq('status', 'approved')
-          .order('submitted_at', { ascending: false })
+          .from('photo_people')
+          .select(`
+            photo_id,
+            photos (
+              id,
+              photo_url,
+              caption,
+              submitter_name,
+              submitter_email,
+              submitter_phone,
+              approximate_date,
+              event_context,
+              status,
+              submitted_at,
+              reviewed_at,
+              reviewed_by,
+              rejection_reason
+            )
+          `)
+          .eq('person_id', personId)
 
         if (photosError) throw photosError
         
-        // Filter by person_id if column exists, otherwise return all (may need schema adjustment)
-        const filteredPhotos = photosData?.filter((photo: any) => 
-          photo.person_id === personId
-        ) || []
+        const filteredPhotos = (photosData || [])
+          .map((item: any) => item.photos)
+          .filter((photo: any) => photo && photo.status === 'approved')
+          .map((photo: any) => ({
+            ...photo,
+            file_url: photo.photo_url,
+          }))
         
-        // Map photo_url to file_url for compatibility
-        const mappedPhotos = filteredPhotos.map((photo: any) => ({
-          ...photo,
-          file_url: photo.photo_url,
-        }))
-        
-        setPhotos(mappedPhotos)
+        setPhotos(filteredPhotos)
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to fetch photos'))
       } finally {

@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 import imageCompression from 'browser-image-compression'
 import { supabase } from '../../lib/supabase'
+import { usePeopleSearch } from '../../hooks/usePeopleSearch'
 import type { Person } from '../../lib/types'
 
 interface ContributionModalProps {
@@ -53,6 +54,10 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [photoFiles, setPhotoFiles] = useState<PhotoFile[]>([])
+  const [taggedPeople, setTaggedPeople] = useState<Person[]>([])
+  const [tagSearchTerm, setTagSearchTerm] = useState('')
+  const [showTagDropdown, setShowTagDropdown] = useState(false)
+  const tagSearchRef = useRef<HTMLDivElement>(null)
   const [crop, setCrop] = useState<Crop>()
   const [completedCrop, setCompletedCrop] = useState<Crop>()
   const [submitting, setSubmitting] = useState(false)
@@ -62,10 +67,34 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
   const imgRef = useRef<HTMLImageElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photosInputRef = useRef<HTMLInputElement>(null)
+  
+  const { people: tagSearchResults, loading: tagSearchLoading } = usePeopleSearch(tagSearchTerm)
 
   const aspectRatio = 4 / 5
   const MAX_MEMORY_LENGTH = 2000
   const MAX_PHOTOS = 5
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagSearchRef.current && !tagSearchRef.current.contains(event.target as Node)) {
+        setShowTagDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleAddTaggedPerson = (personToAdd: Person) => {
+    if (!taggedPeople.find(p => p.id === personToAdd.id) && personToAdd.id !== person.id) {
+      setTaggedPeople([...taggedPeople, personToAdd])
+    }
+    setTagSearchTerm('')
+    setShowTagDropdown(false)
+  }
+
+  const handleRemoveTaggedPerson = (personId: string) => {
+    setTaggedPeople(taggedPeople.filter(p => p.id !== personId))
+  }
 
   const validateEmail = (email: string): boolean => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -511,7 +540,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
           data: { publicUrl },
         } = supabase.storage.from('photos').getPublicUrl(filePath)
 
-        const { error: photoError } = await supabase
+        const { data: insertedPhoto, error: photoError } = await supabase
           .from('photos')
           .insert({
             photo_url: publicUrl,
@@ -523,11 +552,25 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
             event_context: photoFile.eventContext || null,
             status: 'pending',
           })
+          .select()
+          .single()
 
         if (photoError) throw photoError
+        if (!insertedPhoto) throw new Error('Failed to insert photo')
 
-        // Note: If photos table needs person_id column, add it here
-        // Otherwise, may need a junction table for person-photo relationships
+        const allPeopleIds = [person.id, ...taggedPeople.map(p => p.id)]
+        const uniquePeopleIds = Array.from(new Set(allPeopleIds))
+
+        const photoPeopleRecords = uniquePeopleIds.map(personId => ({
+          photo_id: insertedPhoto.id,
+          person_id: personId,
+        }))
+
+        const { error: photoPeopleError } = await supabase
+          .from('photo_people')
+          .insert(photoPeopleRecords)
+
+        if (photoPeopleError) throw photoPeopleError
       }
 
       setSuccess(true)
@@ -1026,6 +1069,75 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
                       )}
                     </div>
                   )}
+
+                  <div className="mt-6 border-t border-gray-200 pt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tag additional people in this photo <span className="text-gray-400 text-xs">(optional)</span>
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      This photo will automatically be linked to {person.full_name}. You can tag additional people here.
+                    </p>
+                    
+                    {taggedPeople.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {taggedPeople.map(taggedPerson => (
+                          <span
+                            key={taggedPerson.id}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
+                          >
+                            {taggedPerson.display_name || taggedPerson.full_name}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTaggedPerson(taggedPerson.id)}
+                              disabled={submitting || success}
+                              className="hover:text-primary-900 disabled:opacity-50"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div ref={tagSearchRef} className="relative">
+                      <input
+                        type="text"
+                        value={tagSearchTerm}
+                        onChange={(e) => {
+                          setTagSearchTerm(e.target.value)
+                          setShowTagDropdown(true)
+                        }}
+                        onFocus={() => tagSearchTerm.length >= 2 && setShowTagDropdown(true)}
+                        placeholder="Search for a person..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        disabled={submitting || success}
+                      />
+                      
+                      {showTagDropdown && tagSearchTerm.length >= 2 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {tagSearchLoading ? (
+                            <div className="px-4 py-2 text-sm text-gray-500">Searching...</div>
+                          ) : tagSearchResults.length === 0 ? (
+                            <div className="px-4 py-2 text-sm text-gray-500">No results found</div>
+                          ) : (
+                            tagSearchResults
+                              .filter(p => p.id !== person.id && !taggedPeople.find(tp => tp.id === p.id))
+                              .slice(0, 8)
+                              .map(searchPerson => (
+                                <button
+                                  key={searchPerson.id}
+                                  type="button"
+                                  onClick={() => handleAddTaggedPerson(searchPerson)}
+                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+                                >
+                                  {searchPerson.display_name || searchPerson.full_name}
+                                </button>
+                              ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
