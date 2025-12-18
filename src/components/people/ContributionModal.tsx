@@ -63,12 +63,42 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [hasPendingPortrait, setHasPendingPortrait] = useState(false)
   const [formErrors, setFormErrors] = useState<FormErrors>({})
   const imgRef = useRef<HTMLImageElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photosInputRef = useRef<HTMLInputElement>(null)
   
   const { people: tagSearchResults, loading: tagSearchLoading } = usePeopleSearch(tagSearchTerm)
+
+  useEffect(() => {
+    const checkPendingPortrait = async () => {
+      if (contributionType === 'portrait') {
+        try {
+          const { data, error: fetchError } = await supabase
+            .from('portrait_submissions')
+            .select('id')
+            .eq('person_id', person.id)
+            .eq('status', 'pending')
+            .limit(1)
+
+          if (!fetchError && data && data.length > 0) {
+            setHasPendingPortrait(true)
+          } else {
+            setHasPendingPortrait(false)
+          }
+        } catch (err) {
+          console.error('Error checking pending portrait:', err)
+          setHasPendingPortrait(false)
+        }
+      } else {
+        setHasPendingPortrait(false)
+      }
+    }
+
+    checkPendingPortrait()
+  }, [contributionType, person.id])
 
   const aspectRatio = 4 / 5
   const MAX_MEMORY_LENGTH = 2000
@@ -385,9 +415,8 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
       console.log('Portrait submission created successfully')
 
       setSuccess(true)
-      setTimeout(() => {
-        onUploadComplete()
-      }, 2000)
+      setShowSuccessModal(true)
+      setShowSuccessModal(true)
     } catch (err) {
       console.error('Portrait upload error:', err)
       let errorMessage = 'Failed to upload portrait'
@@ -442,9 +471,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
       if (insertError) throw insertError
 
       setSuccess(true)
-      setTimeout(() => {
-        onUploadComplete()
-      }, 2000)
+      setShowSuccessModal(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit correction')
       setSubmitting(false)
@@ -505,9 +532,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
       console.log('Memory inserted successfully:', data)
 
       setSuccess(true)
-      setTimeout(() => {
-        onUploadComplete()
-      }, 2000)
+      setShowSuccessModal(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit memory')
       setSubmitting(false)
@@ -574,9 +599,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
       }
 
       setSuccess(true)
-      setTimeout(() => {
-        onUploadComplete()
-      }, 2000)
+      setShowSuccessModal(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload photos')
       setSubmitting(false)
@@ -599,17 +622,22 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
     }
   }
 
-  const getSuccessMessage = () => {
+  const getSuccessModalMessage = () => {
     switch (contributionType) {
       case 'portrait':
-        return `Portrait submitted for approval. Thank you, ${submitterName}!`
+        return 'Your portrait has been submitted successfully. All submissions are reviewed by an administrator before appearing on the site. This usually happens within a few days. Please don\'t resubmit — we\'ve got it!'
       case 'correction':
-        return `Correction submitted for review. Thank you, ${submitterName}!`
+        return 'Your correction has been submitted successfully. An administrator will review it shortly. Thank you for helping us keep our records accurate!'
       case 'memory':
-        return `Memory submitted for review. Thank you, ${submitterName}!`
+        return 'Your memory has been submitted successfully. All submissions are reviewed by an administrator before appearing on the site. This usually happens within a few days. Please don\'t resubmit — we\'ve got it!'
       case 'photos':
-        return `Photos submitted for review. Thank you, ${submitterName}!`
+        return 'Your photo has been submitted successfully. All submissions are reviewed by an administrator before appearing on the site. This usually happens within a few days. Please don\'t resubmit — we\'ve got it!'
     }
+  }
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false)
+    onUploadComplete()
   }
 
   const tabs = [
@@ -642,12 +670,6 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
             </div>
           )}
 
-          {success && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">
-              {getSuccessMessage()}
-            </div>
-          )}
-
           <div className="mb-6">
             <div className="grid grid-cols-2 md:flex gap-2 border-b border-gray-200">
               {tabs.map((tab) => (
@@ -671,6 +693,21 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
               ))}
             </div>
           </div>
+
+          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 flex items-start gap-2">
+            <span className="text-blue-600 text-lg">ℹ️</span>
+            <p className="text-sm text-blue-700">
+              All submissions are reviewed by an administrator before appearing on the site.
+            </p>
+          </div>
+
+          {contributionType === 'portrait' && hasPendingPortrait && (
+            <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
+              <p className="text-sm text-yellow-800">
+                ⚠️ You already have a portrait pending review. Please wait for it to be approved before submitting another.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-6">
             <div className="border-b border-gray-200 pb-6">
@@ -1152,7 +1189,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={submitting || success || !isFormValid()}
+                disabled={submitting || success || !isFormValid() || (contributionType === 'portrait' && hasPendingPortrait)}
                 className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {submitting ? (
@@ -1195,6 +1232,25 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
           </div>
         </div>
       </div>
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-primary-700 mb-4">Thank You!</h2>
+            <p className="text-gray-700 mb-6">
+              {getSuccessModalMessage()}
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={handleSuccessModalClose}
+                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
