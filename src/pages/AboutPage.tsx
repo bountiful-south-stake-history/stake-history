@@ -63,26 +63,6 @@ export function AboutPage() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-2xl font-bold text-primary-700 mb-4">Stake Presidents</h2>
-        <p className="text-gray-700 mb-4">
-          Seven stake presidents have led the Bountiful Utah South Stake:
-        </p>
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <ul className="space-y-2 text-gray-700">
-            <li><strong>William R. Holbrook</strong> (1958–1965)</li>
-            <li><strong>S. Park Hayes</strong> (1965–1972)</li>
-            <li><strong>F. Burton Howard</strong> (1972–1978)</li>
-            <li><strong>Ronald J. Wray</strong> (1978–1987)</li>
-            <li><strong>Lynn E. Zabriskie</strong> (1987–1996)</li>
-            <li><strong>Troy M. Anderson</strong> (1996–2005)</li>
-            <li><strong>Brent M. Anderson</strong> (2005–2014)</li>
-            <li><strong>Chad L. Anderson</strong> (2014–2023)</li>
-            <li><strong>Gary R. Hill</strong> (2023–present)</li>
-          </ul>
-        </div>
-      </section>
-
-      <section className="mb-8">
         <h2 className="text-2xl font-bold text-primary-700 mb-4">Contributing</h2>
         <p className="text-gray-700 mb-4">
           We welcome contributions from stake members, former members, and family members of those who have served. You can submit:
