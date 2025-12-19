@@ -79,7 +79,7 @@ export function PersonMemoriesPage() {
 
       <div className="mb-8">
         <div className="flex items-start gap-6 mb-6">
-          <PortraitDisplay person={person} onUploadComplete={() => window.location.reload()} />
+          <PortraitDisplay person={person} onUploadComplete={() => window.location.reload()} lightboxMode={true} />
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">
               <div>

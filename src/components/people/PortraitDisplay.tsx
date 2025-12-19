@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
 import type { Person } from '../../lib/types'
 import { ContributionModal } from './ContributionModal'
+import { PortraitLightbox } from './PortraitLightbox'
 
 interface PortraitDisplayProps {
   person: Person
   onUploadComplete?: () => void
+  lightboxMode?: boolean
 }
 
-export function PortraitDisplay({ person, onUploadComplete }: PortraitDisplayProps) {
+export function PortraitDisplay({ person, onUploadComplete, lightboxMode = false }: PortraitDisplayProps) {
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showLightbox, setShowLightbox] = useState(false)
   const [imageError, setImageError] = useState(false)
   const showPortrait = person.portrait_url && !person.portrait_pending && !imageError
   const canUpload = !person.redacted
@@ -31,9 +34,15 @@ export function PortraitDisplay({ person, onUploadComplete }: PortraitDisplayPro
     <>
       <div
         className={`w-20 h-[100px] rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 relative ${
-          canUpload ? 'cursor-pointer group' : ''
+          (canUpload && !lightboxMode) || (showPortrait && lightboxMode) ? 'cursor-pointer group' : ''
         }`}
-        onClick={() => canUpload && setShowUploadModal(true)}
+        onClick={() => {
+          if (lightboxMode && showPortrait) {
+            setShowLightbox(true)
+          } else if (canUpload && !lightboxMode) {
+            setShowUploadModal(true)
+          }
+        }}
       >
         {showPortrait ? (
           <>
@@ -117,6 +126,13 @@ export function PortraitDisplay({ person, onUploadComplete }: PortraitDisplayPro
           person={person}
           onUploadComplete={handleUploadComplete}
           onCancel={() => setShowUploadModal(false)}
+        />
+      )}
+      {showLightbox && showPortrait && person.portrait_url && (
+        <PortraitLightbox
+          imageUrl={person.portrait_url}
+          personName={person.display_name || person.full_name}
+          onClose={() => setShowLightbox(false)}
         />
       )}
     </>
