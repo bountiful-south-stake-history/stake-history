@@ -190,19 +190,21 @@ export function PersonMemoriesPage() {
                 <div className="prose max-w-none">
                   <p className="text-gray-700 whitespace-pre-wrap">{memory.content}</p>
                 </div>
-                <div className="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-500">
-                  {memory.submitter_name && (
-                    <span>
-                      Shared by {memory.submitter_name}
-                      {memory.relationship && (
-                        <span className="ml-1">
-                          ({relationshipLabels[memory.relationship] || memory.relationship})
-                        </span>
-                      )}
-                    </span>
+                <div className="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500 space-y-1">
+                  {memory.relationship && (
+                    <p>
+                      <span className="text-gray-400">Relationship:</span> {relationshipLabels[memory.relationship] || memory.relationship}
+                    </p>
                   )}
                   {memory.time_period && (
-                    <span className="ml-2">• {memory.time_period}</span>
+                    <p>
+                      <span className="text-gray-400">Time Period:</span> {memory.time_period}
+                    </p>
+                  )}
+                  {memory.submitter_name && (
+                    <p>
+                      <span className="text-gray-400">Shared by:</span> {memory.submitter_name}
+                    </p>
                   )}
                 </div>
               </div>
@@ -269,14 +271,43 @@ export function PersonMemoriesPage() {
                   alt={photo.caption || 'Photo'}
                   className="w-full h-64 object-cover"
                 />
-                {photo.caption && (
-                  <div className="p-3">
-                    <p className="text-sm text-gray-700">{photo.caption}</p>
-                    {photo.approximate_date && (
-                      <p className="text-xs text-gray-500 mt-1">{photo.approximate_date}</p>
-                    )}
-                  </div>
-                )}
+                <div className="p-3">
+                  {photo.caption && (
+                    <p className="text-sm text-gray-700 mb-1">{photo.caption}</p>
+                  )}
+                  {photo.approximate_date && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      <span className="text-gray-400">Date:</span> {photo.approximate_date}
+                    </p>
+                  )}
+                  {photo.event_context && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      <span className="text-gray-400">Event:</span> {photo.event_context}
+                    </p>
+                  )}
+                  {(photo as any).taggedPeople && (photo as any).taggedPeople.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      <span className="text-gray-400">Tagged:</span>{' '}
+                      {(photo as any).taggedPeople.map((taggedPerson: any, idx: number) => (
+                        <span key={taggedPerson.id}>
+                          <Link
+                            to={`/person/${taggedPerson.id}`}
+                            className="text-primary-600 hover:text-primary-700 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {taggedPerson.display_name || taggedPerson.full_name}
+                          </Link>
+                          {idx < (photo as any).taggedPeople.length - 1 && ', '}
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                  {photo.submitter_name && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      <span className="text-gray-400">Shared by:</span> {photo.submitter_name}
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>

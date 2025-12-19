@@ -39,6 +39,7 @@ interface PhotoFile {
   caption: string
   approximateDate: string
   eventContext: string
+  taggedPeople: Person[]
 }
 
 export function ContributionModal({ person, onUploadComplete, onCancel }: ContributionModalProps) {
@@ -57,7 +58,10 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
   const [taggedPeople, setTaggedPeople] = useState<Person[]>([])
   const [tagSearchTerm, setTagSearchTerm] = useState('')
   const [showTagDropdown, setShowTagDropdown] = useState(false)
+  const [tagSearchPhotoIndex, setTagSearchPhotoIndex] = useState<number | null>(null)
   const tagSearchRef = useRef<HTMLDivElement>(null)
+  const [dragActive, setDragActive] = useState(false)
+  const [portraitDragActive, setPortraitDragActive] = useState(false)
   const [crop, setCrop] = useState<Crop>()
   const [completedCrop, setCompletedCrop] = useState<Crop>()
   const [submitting, setSubmitting] = useState(false)
@@ -114,16 +118,112 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleAddTaggedPerson = (personToAdd: Person) => {
-    if (!taggedPeople.find(p => p.id === personToAdd.id) && personToAdd.id !== person.id) {
-      setTaggedPeople([...taggedPeople, personToAdd])
+  const handleAddTaggedPerson = (personToAdd: Person, photoIndex?: number) => {
+    if (photoIndex !== undefined) {
+      const updated = [...photoFiles]
+      if (!updated[photoIndex].taggedPeople.find(p => p.id === personToAdd.id) && personToAdd.id !== person.id) {
+        updated[photoIndex].taggedPeople = [...updated[photoIndex].taggedPeople, personToAdd]
+        setPhotoFiles(updated)
+      }
+    } else {
+      if (!taggedPeople.find(p => p.id === personToAdd.id) && personToAdd.id !== person.id) {
+        setTaggedPeople([...taggedPeople, personToAdd])
+      }
     }
     setTagSearchTerm('')
     setShowTagDropdown(false)
+    setTagSearchPhotoIndex(null)
   }
 
-  const handleRemoveTaggedPerson = (personId: string) => {
-    setTaggedPeople(taggedPeople.filter(p => p.id !== personId))
+  const handleRemoveTaggedPerson = (personId: string, photoIndex?: number) => {
+    if (photoIndex !== undefined) {
+      const updated = [...photoFiles]
+      updated[photoIndex].taggedPeople = updated[photoIndex].taggedPeople.filter(p => p.id !== personId)
+      setPhotoFiles(updated)
+    } else {
+      setTaggedPeople(taggedPeople.filter(p => p.id !== personId))
+    }
+  }
+
+  const validateImageFile = (file: File): boolean => {
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+    return validTypes.includes(file.type) || !!file.name.toLowerCase().match(/\.(jpg|jpeg|png|webp|heic|heif)$/i)
+  }
+
+  const handleDrag = (e: React.DragEvent, isPortrait: boolean) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      if (isPortrait) {
+        setPortraitDragActive(true)
+      } else {
+        setDragActive(true)
+      }
+    } else if (e.type === 'dragleave') {
+      if (isPortrait) {
+        setPortraitDragActive(false)
+      } else {
+        setDragActive(false)
+      }
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent, isPortrait: boolean) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isPortrait) {
+      setPortraitDragActive(false)
+    } else {
+      setDragActive(false)
+    }
+
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length === 0) return
+
+    const imageFiles = files.filter(file => validateImageFile(file))
+    if (imageFiles.length === 0) {
+      setError('Please drop image files only (JPEG, PNG, WebP, or HEIC)')
+      return
+    }
+
+    if (isPortrait) {
+      if (imageFiles.length > 1) {
+        setError('Please drop only one image for portrait')
+        return
+      }
+      const file = imageFiles[0]
+      setSelectedFile(file)
+      setError(null)
+      const reader = new FileReader()
+      reader.onload = () => {
+        setPreviewUrl(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    } else {
+      if (photoFiles.length + imageFiles.length > MAX_PHOTOS) {
+        setError(`Maximum ${MAX_PHOTOS} photos allowed`)
+        return
+      }
+
+      const newPhotos: PhotoFile[] = []
+      imageFiles.forEach((file) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          newPhotos.push({
+            file,
+            preview: reader.result as string,
+            caption: '',
+            approximateDate: '',
+            eventContext: '',
+            taggedPeople: [],
+          })
+          if (newPhotos.length === imageFiles.length) {
+            setPhotoFiles([...photoFiles, ...newPhotos])
+          }
+        }
+        reader.readAsDataURL(file)
+      })
+    }
   }
 
   const validateEmail = (email: string): boolean => {
@@ -229,6 +329,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
           caption: '',
           approximateDate: '',
           eventContext: '',
+          taggedPeople: [],
         })
         if (newPhotos.length === files.length) {
           setPhotoFiles([...photoFiles, ...newPhotos])
@@ -583,7 +684,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
         if (photoError) throw photoError
         if (!insertedPhoto) throw new Error('Failed to insert photo')
 
-        const allPeopleIds = [person.id, ...taggedPeople.map(p => p.id)]
+        const allPeopleIds = [person.id, ...photoFile.taggedPeople.map(p => p.id)]
         const uniquePeopleIds = Array.from(new Set(allPeopleIds))
 
         const photoPeopleRecords = uniquePeopleIds.map(personId => ({
@@ -805,7 +906,17 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
                 </p>
 
                 {!previewUrl ? (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                      portraitDragActive
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 bg-gray-50'
+                    }`}
+                    onDragEnter={(e) => handleDrag(e, true)}
+                    onDragOver={(e) => handleDrag(e, true)}
+                    onDragLeave={(e) => handleDrag(e, true)}
+                    onDrop={(e) => handleDrop(e, true)}
+                  >
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -814,16 +925,25 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
                       className="hidden"
                       disabled={submitting || success}
                     />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={submitting || success}
-                      className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Select Image
-                    </button>
-                    <p className="text-sm text-gray-500 mt-2">
-                      JPEG, PNG, WebP, or HEIC format
-                    </p>
+                    {portraitDragActive ? (
+                      <p className="text-lg text-blue-700 font-medium mb-4">Drop image here</p>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={submitting || success}
+                          className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Select Image
+                        </button>
+                        <p className="text-sm text-gray-500 mt-2">
+                          JPEG, PNG, WebP, or HEIC format
+                        </p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          or drag and drop an image here
+                        </p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1006,7 +1126,17 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
                 </h3>
                 <div className="space-y-4">
                   {photoFiles.length === 0 ? (
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                    <div
+                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                        dragActive
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300 bg-gray-50'
+                      }`}
+                      onDragEnter={(e) => handleDrag(e, false)}
+                      onDragOver={(e) => handleDrag(e, false)}
+                      onDragLeave={(e) => handleDrag(e, false)}
+                      onDrop={(e) => handleDrop(e, false)}
+                    >
                       <input
                         ref={photosInputRef}
                         type="file"
@@ -1016,21 +1146,40 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
                         className="hidden"
                         disabled={submitting || success}
                       />
-                      <button
-                        onClick={() => photosInputRef.current?.click()}
-                        disabled={submitting || success}
-                        className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Select Photos (up to {MAX_PHOTOS})
-                      </button>
-                      <p className="text-sm text-gray-500 mt-2">
-                        JPEG, PNG, WebP, or HEIC format
-                      </p>
+                      {dragActive ? (
+                        <p className="text-lg text-blue-700 font-medium mb-4">Drop images here</p>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => photosInputRef.current?.click()}
+                            disabled={submitting || success}
+                            className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Select Photos (up to {MAX_PHOTOS})
+                          </button>
+                          <p className="text-sm text-gray-500 mt-2">
+                            JPEG, PNG, WebP, or HEIC format
+                          </p>
+                          <p className="text-sm text-gray-400 mt-1">
+                            or drag and drop images here
+                          </p>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-6">
                       {photoFiles.map((photo, index) => (
                         <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-4">
+                            <h4 className="text-sm font-semibold text-gray-700">Photo {index + 1}</h4>
+                            <button
+                              onClick={() => removePhoto(index)}
+                              disabled={submitting || success}
+                              className="text-red-600 hover:text-red-700 disabled:opacity-50 text-sm font-medium"
+                            >
+                              [X]
+                            </button>
+                          </div>
                           <div className="flex gap-4 mb-4">
                             <img
                               src={photo.preview}
@@ -1082,99 +1231,119 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
                                 />
                               </div>
                             </div>
-                            <button
-                              onClick={() => removePhoto(index)}
-                              disabled={submitting || success}
-                              className="text-red-600 hover:text-red-700 disabled:opacity-50"
-                            >
-                              Remove
-                            </button>
+                          </div>
+                          <div className="border-t border-gray-200 pt-4 mt-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Tag additional people in this photo <span className="text-gray-400 text-xs">(optional)</span>
+                            </label>
+                            <p className="text-xs text-gray-500 mb-3">
+                              This photo will automatically be linked to {person.full_name}. You can tag additional people here.
+                            </p>
+                            
+                            {photo.taggedPeople.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {photo.taggedPeople.map(taggedPerson => (
+                                  <span
+                                    key={taggedPerson.id}
+                                    className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
+                                  >
+                                    {taggedPerson.display_name || taggedPerson.full_name}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTaggedPerson(taggedPerson.id, index)}
+                                      disabled={submitting || success}
+                                      className="hover:text-primary-900 disabled:opacity-50"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            <div ref={tagSearchRef} className="relative">
+                              <input
+                                type="text"
+                                value={tagSearchPhotoIndex === index ? tagSearchTerm : ''}
+                                onChange={(e) => {
+                                  setTagSearchTerm(e.target.value)
+                                  setTagSearchPhotoIndex(index)
+                                  setShowTagDropdown(true)
+                                }}
+                                onFocus={() => {
+                                  setTagSearchPhotoIndex(index)
+                                  if (tagSearchTerm.length >= 2) {
+                                    setShowTagDropdown(true)
+                                  }
+                                }}
+                                placeholder="Search for a person..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                disabled={submitting || success}
+                              />
+                              {showTagDropdown && tagSearchPhotoIndex === index && tagSearchTerm.length >= 2 && tagSearchResults.length > 0 && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                  {tagSearchLoading ? (
+                                    <div className="px-4 py-2 text-sm text-gray-500">Searching...</div>
+                                  ) : (
+                                    tagSearchResults
+                                      .filter(searchPerson => searchPerson.id !== person.id && !photo.taggedPeople.find(p => p.id === searchPerson.id))
+                                      .slice(0, 10)
+                                      .map((searchPerson) => (
+                                        <button
+                                          key={searchPerson.id}
+                                          type="button"
+                                          onClick={() => handleAddTaggedPerson(searchPerson, index)}
+                                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+                                        >
+                                          {searchPerson.display_name || searchPerson.full_name}
+                                        </button>
+                                      ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
                       {photoFiles.length < MAX_PHOTOS && (
-                        <button
-                          onClick={() => photosInputRef.current?.click()}
-                          disabled={submitting || success}
-                          className="text-sm text-primary-600 hover:text-primary-700 underline disabled:opacity-50"
+                        <div
+                          className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                            dragActive
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-300 bg-gray-50'
+                          }`}
+                          onDragEnter={(e) => handleDrag(e, false)}
+                          onDragOver={(e) => handleDrag(e, false)}
+                          onDragLeave={(e) => handleDrag(e, false)}
+                          onDrop={(e) => handleDrop(e, false)}
                         >
-                          Add More Photos ({photoFiles.length} / {MAX_PHOTOS})
-                        </button>
+                          <input
+                            ref={photosInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/heic"
+                            multiple
+                            onChange={handlePhotosSelect}
+                            className="hidden"
+                            disabled={submitting || success}
+                          />
+                          {dragActive ? (
+                            <p className="text-lg text-blue-700 font-medium mb-4">Drop images here</p>
+                          ) : (
+                            <button
+                              onClick={() => photosInputRef.current?.click()}
+                              disabled={submitting || success}
+                              className="text-sm text-primary-600 hover:text-primary-700 underline disabled:opacity-50"
+                            >
+                              [+ Add Another Photo] ({photoFiles.length} / {MAX_PHOTOS})
+                            </button>
+                          )}
+                        </div>
                       )}
                       {formErrors.photos && (
                         <p className="text-sm text-red-600">{formErrors.photos}</p>
                       )}
                     </div>
                   )}
-
-                  <div className="mt-6 border-t border-gray-200 pt-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tag additional people in this photo <span className="text-gray-400 text-xs">(optional)</span>
-                    </label>
-                    <p className="text-xs text-gray-500 mb-3">
-                      This photo will automatically be linked to {person.full_name}. You can tag additional people here.
-                    </p>
-                    
-                    {taggedPeople.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {taggedPeople.map(taggedPerson => (
-                          <span
-                            key={taggedPerson.id}
-                            className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
-                          >
-                            {taggedPerson.display_name || taggedPerson.full_name}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveTaggedPerson(taggedPerson.id)}
-                              disabled={submitting || success}
-                              className="hover:text-primary-900 disabled:opacity-50"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div ref={tagSearchRef} className="relative">
-                      <input
-                        type="text"
-                        value={tagSearchTerm}
-                        onChange={(e) => {
-                          setTagSearchTerm(e.target.value)
-                          setShowTagDropdown(true)
-                        }}
-                        onFocus={() => tagSearchTerm.length >= 2 && setShowTagDropdown(true)}
-                        placeholder="Search for a person..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        disabled={submitting || success}
-                      />
-                      
-                      {showTagDropdown && tagSearchTerm.length >= 2 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                          {tagSearchLoading ? (
-                            <div className="px-4 py-2 text-sm text-gray-500">Searching...</div>
-                          ) : tagSearchResults.length === 0 ? (
-                            <div className="px-4 py-2 text-sm text-gray-500">No results found</div>
-                          ) : (
-                            tagSearchResults
-                              .filter(p => p.id !== person.id && !taggedPeople.find(tp => tp.id === p.id))
-                              .slice(0, 8)
-                              .map(searchPerson => (
-                                <button
-                                  key={searchPerson.id}
-                                  type="button"
-                                  onClick={() => handleAddTaggedPerson(searchPerson)}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                                >
-                                  {searchPerson.display_name || searchPerson.full_name}
-                                </button>
-                              ))
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </div>
               </div>
             )}

@@ -1,23 +1,40 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { usePendingPhotos } from '../../hooks/usePendingPhotos'
 import { useApprovedPhotos } from '../../hooks/useApprovedPhotos'
+import { usePeopleSearch } from '../../hooks/usePeopleSearch'
+import { useAuth } from '../../hooks/useAuth'
+import type { Person } from '../../lib/types'
 
 interface AdminPhotosTabProps {
   onActionComplete?: () => void
 }
 
 export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
+  const { user } = useAuth()
   const [viewMode, setViewMode] = useState<'pending' | 'approved'>('pending')
   const { photos: pendingPhotos, loading: pendingLoading, error: pendingError, refetch: refetchPending } = usePendingPhotos()
   const { photos: approvedPhotos, loading: approvedLoading, error: approvedError, refetch: refetchApproved } = useApprovedPhotos()
   const [processing, setProcessing] = useState<string | null>(null)
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
+  const [editingPhoto, setEditingPhoto] = useState<string | null>(null)
+  const [editCaption, setEditCaption] = useState('')
+  const [editDate, setEditDate] = useState('')
+  const [editEvent, setEditEvent] = useState('')
+  const [editSubmitterName, setEditSubmitterName] = useState('')
+  const [editSubmitterEmail, setEditSubmitterEmail] = useState('')
+  const [editTaggedPeople, setEditTaggedPeople] = useState<Person[]>([])
+  const [tagSearchTerm, setTagSearchTerm] = useState('')
+  const [showTagDropdown, setShowTagDropdown] = useState(false)
+  const tagSearchRef = useRef<HTMLDivElement>(null)
+  const [deleteConfirmState, setDeleteConfirmState] = useState<Record<string, 'none' | 'warning' | 'modal'>>({})
+  const [deleteConfirmText, setDeleteConfirmText] = useState<Record<string, string>>({})
 
   const photos = viewMode === 'pending' ? pendingPhotos : approvedPhotos
   const loading = viewMode === 'pending' ? pendingLoading : approvedLoading
   const error = viewMode === 'pending' ? pendingError : approvedError
+  const { people: tagSearchResults, loading: tagSearchLoading } = usePeopleSearch(tagSearchTerm)
   
   const refetch = () => {
     if (viewMode === 'pending') {
@@ -25,6 +42,145 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
     } else {
       refetchApproved()
     }
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagSearchRef.current && !tagSearchRef.current.contains(event.target as Node)) {
+        setShowTagDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleStartEdit = async (photoId: string) => {
+    const photo = photos.find((p) => p.id === photoId)
+    if (!photo) return
+
+    setEditCaption(photo.caption || '')
+    setEditDate(photo.approximate_date || '')
+    setEditEvent(photo.event_context || '')
+    setEditSubmitterName(photo.submitter_name || '')
+    setEditSubmitterEmail(photo.submitter_email || '')
+
+    const { data: photoPeopleData } = await supabase
+      .from('photo_people')
+      .select(`
+        person_id,
+        people:person_id (
+          id,
+          display_name,
+          full_name
+        )
+      `)
+      .eq('photo_id', photoId)
+
+    const taggedPeople: Person[] = []
+    if (photoPeopleData) {
+      photoPeopleData.forEach((item: any) => {
+        if (item.people) {
+          taggedPeople.push({
+            id: item.people.id,
+            display_name: item.people.display_name,
+            full_name: item.people.full_name,
+          } as Person)
+        }
+      })
+    }
+    setEditTaggedPeople(taggedPeople)
+    setEditingPhoto(photoId)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingPhoto(null)
+    setEditCaption('')
+    setEditDate('')
+    setEditEvent('')
+    setEditSubmitterName('')
+    setEditSubmitterEmail('')
+    setEditTaggedPeople([])
+    setTagSearchTerm('')
+    setShowTagDropdown(false)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingPhoto) return
+
+    setProcessing(editingPhoto)
+    try {
+      const { error: updateError } = await supabase
+        .from('photos')
+        .update({
+          caption: editCaption,
+          approximate_date: editDate || null,
+          event_context: editEvent || null,
+          submitter_name: editSubmitterName,
+          submitter_email: editSubmitterEmail,
+        })
+        .eq('id', editingPhoto)
+
+      if (updateError) throw updateError
+
+      const { error: deleteError } = await supabase
+        .from('photo_people')
+        .delete()
+        .eq('photo_id', editingPhoto)
+
+      if (deleteError) throw deleteError
+
+      if (editTaggedPeople.length > 0) {
+        const photoPeopleRecords = editTaggedPeople.map(person => ({
+          photo_id: editingPhoto,
+          person_id: person.id,
+        }))
+
+        const { error: insertError } = await supabase
+          .from('photo_people')
+          .insert(photoPeopleRecords)
+
+        if (insertError) throw insertError
+      }
+
+      if (user) {
+        await supabase.from('audit_log').insert({
+          table_name: 'photos',
+          record_id: editingPhoto,
+          action: 'edit_photo',
+          old_values: null,
+          new_values: {
+            caption: editCaption,
+            approximate_date: editDate,
+            event_context: editEvent,
+            submitter_name: editSubmitterName,
+            submitter_email: editSubmitterEmail,
+            tagged_people_count: editTaggedPeople.length,
+          },
+          performed_by: user.id,
+          performed_at: new Date().toISOString(),
+        })
+      }
+
+      handleCancelEdit()
+      refetch()
+      onActionComplete?.()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to save changes')
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  const handleAddTaggedPerson = (personToAdd: Person) => {
+    if (!editTaggedPeople.find(p => p.id === personToAdd.id)) {
+      setEditTaggedPeople([...editTaggedPeople, personToAdd])
+    }
+    setTagSearchTerm('')
+    setShowTagDropdown(false)
+  }
+
+  const handleRemoveTaggedPerson = (personId: string) => {
+    setEditTaggedPeople(editTaggedPeople.filter(p => p.id !== personId))
   }
 
   const handleApprove = async (photoId: string) => {
@@ -76,15 +232,35 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
     }
   }
 
-  const handleDelete = async (photoId: string) => {
-    if (!confirm('Are you sure you want to delete this photo? This action cannot be undone.')) {
-      return
+  const handleDeleteClick = (photoId: string) => {
+    const currentState = deleteConfirmState[photoId] || 'none'
+    if (currentState === 'none') {
+      setDeleteConfirmState({ ...deleteConfirmState, [photoId]: 'warning' })
+    } else if (currentState === 'warning') {
+      setDeleteConfirmState({ ...deleteConfirmState, [photoId]: 'modal' })
+      setDeleteConfirmText({ ...deleteConfirmText, [photoId]: '' })
     }
+  }
 
+  const handleDeleteCancel = (photoId: string) => {
+    setDeleteConfirmState({ ...deleteConfirmState, [photoId]: 'none' })
+    setDeleteConfirmText({ ...deleteConfirmText, [photoId]: '' })
+  }
+
+  const handleDeleteConfirm = async (photoId: string) => {
     setProcessing(photoId)
     try {
       const photo = photos.find((p) => p.id === photoId)
-      if (photo && (photo.photo_url || (photo as any)?.file_url)) {
+      if (!photo) throw new Error('Photo not found')
+
+      const { error: deletePeopleError } = await supabase
+        .from('photo_people')
+        .delete()
+        .eq('photo_id', photoId)
+
+      if (deletePeopleError) throw deletePeopleError
+
+      if (photo.photo_url || (photo as any)?.file_url) {
         const photoUrl = photo.photo_url || (photo as any).file_url
         try {
           const url = new URL(photoUrl)
@@ -104,7 +280,24 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
         .eq('id', photoId)
 
       if (deleteError) throw deleteError
-      
+
+      if (user) {
+        await supabase.from('audit_log').insert({
+          table_name: 'photos',
+          record_id: photoId,
+          action: 'delete_photo',
+          old_values: {
+            caption: photo.caption,
+            photo_url: photo.photo_url,
+          },
+          new_values: null,
+          performed_by: user.id,
+          performed_at: new Date().toISOString(),
+        })
+      }
+
+      setDeleteConfirmState({ ...deleteConfirmState, [photoId]: 'none' })
+      setDeleteConfirmText({ ...deleteConfirmText, [photoId]: '' })
       refetch()
       onActionComplete?.()
     } catch (err) {
@@ -289,33 +482,46 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
                 Submitted by: {photo.submitter_name}
                 {photo.submitter_email && ` (${photo.submitter_email})`}
               </div>
-              <div className="flex gap-2">
-                {viewMode === 'pending' ? (
-                  <>
-                    <button
-                      onClick={() => handleApprove(photo.id)}
-                      disabled={processing === photo.id}
-                      className="flex-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReject(photo.id)}
-                      disabled={processing === photo.id}
-                      className="flex-1 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
-                    >
-                      Reject
-                    </button>
-                  </>
-                ) : (
+              <div className="flex gap-2 flex-col">
+                <div className="flex gap-2">
                   <button
-                    onClick={() => handleDelete(photo.id)}
+                    onClick={() => handleStartEdit(photo.id)}
                     disabled={processing === photo.id}
-                    className="w-full px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+                    className="flex-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
                   >
-                    Delete
+                    Edit
                   </button>
-                )}
+                  {viewMode === 'pending' ? (
+                    <>
+                      <button
+                        onClick={() => handleApprove(photo.id)}
+                        disabled={processing === photo.id}
+                        className="flex-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleReject(photo.id)}
+                        disabled={processing === photo.id}
+                        className="flex-1 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleDeleteClick(photo.id)}
+                      disabled={processing === photo.id}
+                      className={`flex-1 px-3 py-1 rounded text-sm disabled:opacity-50 ${
+                        deleteConfirmState[photo.id] === 'warning'
+                          ? 'bg-yellow-50 border-yellow-400 text-yellow-700 hover:bg-yellow-100 border-2'
+                          : 'border-red-300 text-red-700 hover:bg-red-50 border-2'
+                      }`}
+                    >
+                      {deleteConfirmState[photo.id] === 'warning' ? 'Are you sure?' : 'Delete'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -334,6 +540,232 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
           </div>
         </div>
       )}
+
+      {editingPhoto && (() => {
+        const photo = photos.find((p) => p.id === editingPhoto)
+        if (!photo) return null
+        const photoUrl = photo.photo_url || (photo as any).file_url
+
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+              <h2 className="text-2xl font-bold text-primary-700 mb-4">Edit Photo</h2>
+              
+              {photoUrl && (
+                <div className="mb-4">
+                  <img src={photoUrl} alt={editCaption || 'Photo'} className="w-full max-h-64 object-contain rounded" />
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Caption <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editCaption}
+                    onChange={(e) => setEditCaption(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    disabled={processing === editingPhoto}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Approximate Date <span className="text-gray-400 text-xs">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    placeholder="e.g., 1985 or Spring 1990"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    disabled={processing === editingPhoto}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Event/Context <span className="text-gray-400 text-xs">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editEvent}
+                    onChange={(e) => setEditEvent(e.target.value)}
+                    placeholder="e.g., Ward Christmas Party"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    disabled={processing === editingPhoto}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tagged People <span className="text-gray-400 text-xs">(optional)</span>
+                  </label>
+                  {editTaggedPeople.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {editTaggedPeople.map(taggedPerson => (
+                        <span
+                          key={taggedPerson.id}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
+                        >
+                          {taggedPerson.display_name || taggedPerson.full_name}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTaggedPerson(taggedPerson.id)}
+                            disabled={processing === editingPhoto}
+                            className="hover:text-primary-900 disabled:opacity-50"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div ref={tagSearchRef} className="relative">
+                    <input
+                      type="text"
+                      value={tagSearchTerm}
+                      onChange={(e) => {
+                        setTagSearchTerm(e.target.value)
+                        setShowTagDropdown(true)
+                      }}
+                      onFocus={() => tagSearchTerm.length >= 2 && setShowTagDropdown(true)}
+                      placeholder="Search for a person..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      disabled={processing === editingPhoto}
+                    />
+                    {showTagDropdown && tagSearchTerm.length >= 2 && tagSearchResults.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {tagSearchLoading ? (
+                          <div className="px-4 py-2 text-sm text-gray-500">Searching...</div>
+                        ) : (
+                          tagSearchResults
+                            .filter(searchPerson => !editTaggedPeople.find(p => p.id === searchPerson.id))
+                            .slice(0, 10)
+                            .map((searchPerson) => (
+                              <button
+                                key={searchPerson.id}
+                                type="button"
+                                onClick={() => handleAddTaggedPerson(searchPerson)}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+                              >
+                                {searchPerson.display_name || searchPerson.full_name}
+                              </button>
+                            ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Submitter Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editSubmitterName}
+                    onChange={(e) => setEditSubmitterName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    disabled={processing === editingPhoto}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Submitter Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editSubmitterEmail}
+                    onChange={(e) => setEditSubmitterEmail(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    disabled={processing === editingPhoto}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={processing === editingPhoto}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={processing === editingPhoto || !editCaption.trim()}
+                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {processing === editingPhoto ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {photos.map((photo) => {
+        const deleteState = deleteConfirmState[photo.id]
+        if (deleteState === 'modal') {
+          return (
+            <div
+              key={`delete-modal-${photo.id}`}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            >
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h2 className="text-xl font-bold text-red-700 mb-4 flex items-center gap-2">
+                  <span>⚠️</span> Delete Photo
+                </h2>
+                <p className="text-gray-700 mb-4">
+                  This action CANNOT be undone.
+                </p>
+                <p className="text-gray-700 mb-4">
+                  The photo and all associated data (tags, captions) will be permanently deleted. The image file will be lost.
+                </p>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Type <strong>DELETE</strong> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText[photo.id] || ''}
+                    onChange={(e) =>
+                      setDeleteConfirmText({ ...deleteConfirmText, [photo.id]: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="DELETE"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => handleDeleteCancel(photo.id)}
+                    className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeleteConfirm(photo.id)}
+                    disabled={
+                      processing === photo.id ||
+                      (deleteConfirmText[photo.id] || '').toUpperCase() !== 'DELETE'
+                    }
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Delete Forever
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+        return null
+      })}
     </div>
   )
 }

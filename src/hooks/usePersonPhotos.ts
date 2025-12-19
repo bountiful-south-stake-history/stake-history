@@ -39,12 +39,44 @@ export function usePersonPhotos(personId: string) {
 
         if (photosError) throw photosError
         
+        const photoIds = [...new Set((photosData || []).map((item: any) => item.photos?.id).filter(Boolean))]
+        
+        const { data: taggedPeopleData } = await supabase
+          .from('photo_people')
+          .select(`
+            photo_id,
+            person_id,
+            people:person_id (
+              id,
+              display_name,
+              full_name
+            )
+          `)
+          .in('photo_id', photoIds)
+
+        const taggedPeopleMap = new Map<string, Array<{ id: string; display_name?: string; full_name: string }>>()
+        if (taggedPeopleData) {
+          taggedPeopleData.forEach((item: any) => {
+            if (!taggedPeopleMap.has(item.photo_id)) {
+              taggedPeopleMap.set(item.photo_id, [])
+            }
+            if (item.people) {
+              taggedPeopleMap.get(item.photo_id)!.push({
+                id: item.people.id,
+                display_name: item.people.display_name,
+                full_name: item.people.full_name,
+              })
+            }
+          })
+        }
+        
         const filteredPhotos = (photosData || [])
           .map((item: any) => item.photos)
           .filter((photo: any) => photo && photo.status === 'approved')
           .map((photo: any) => ({
             ...photo,
             file_url: photo.photo_url,
+            taggedPeople: taggedPeopleMap.get(photo.id) || [],
           }))
         
         setPhotos(filteredPhotos)
