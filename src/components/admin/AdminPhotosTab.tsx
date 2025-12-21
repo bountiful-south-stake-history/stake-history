@@ -25,6 +25,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
   const [editSubmitterName, setEditSubmitterName] = useState('')
   const [editSubmitterEmail, setEditSubmitterEmail] = useState('')
   const [editTaggedPeople, setEditTaggedPeople] = useState<Person[]>([])
+  const [editAdditionalPeople, setEditAdditionalPeople] = useState<string[]>([])
   const [tagSearchTerm, setTagSearchTerm] = useState('')
   const [showTagDropdown, setShowTagDropdown] = useState(false)
   const tagSearchRef = useRef<HTMLDivElement>(null)
@@ -89,6 +90,18 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
       })
     }
     setEditTaggedPeople(taggedPeople)
+
+    let additionalPeople: string[] = []
+    try {
+      if (photo.additional_people) {
+        additionalPeople = typeof photo.additional_people === 'string' 
+          ? JSON.parse(photo.additional_people) 
+          : photo.additional_people
+      }
+    } catch (e) {
+      console.error('Failed to parse additional_people:', e)
+    }
+    setEditAdditionalPeople(additionalPeople || [])
     setEditingPhoto(photoId)
   }
 
@@ -100,6 +113,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
     setEditSubmitterName('')
     setEditSubmitterEmail('')
     setEditTaggedPeople([])
+    setEditAdditionalPeople([])
     setTagSearchTerm('')
     setShowTagDropdown(false)
   }
@@ -117,6 +131,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
           event_context: editEvent || null,
           submitter_name: editSubmitterName,
           submitter_email: editSubmitterEmail,
+          additional_people: editAdditionalPeople.length > 0 ? JSON.stringify(editAdditionalPeople) : null,
         })
         .eq('id', editingPhoto)
 
@@ -179,8 +194,21 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
     setShowTagDropdown(false)
   }
 
+  const handleAddAdditionalPerson = (name: string) => {
+    const trimmedName = name.trim()
+    if (trimmedName && !editAdditionalPeople.includes(trimmedName)) {
+      setEditAdditionalPeople([...editAdditionalPeople, trimmedName])
+    }
+    setTagSearchTerm('')
+    setShowTagDropdown(false)
+  }
+
   const handleRemoveTaggedPerson = (personId: string) => {
     setEditTaggedPeople(editTaggedPeople.filter(p => p.id !== personId))
+  }
+
+  const handleRemoveAdditionalPerson = (name: string) => {
+    setEditAdditionalPeople(editAdditionalPeople.filter(n => n !== name))
   }
 
   const handleApprove = async (photoId: string) => {
@@ -462,18 +490,28 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
                   </Link>
                 </div>
               )}
-              {(photo as any).person_names && (photo as any).person_names.length > 0 && (
+              {(((photo as any).taggedPeople?.length > 0) || ((photo as any).additionalPeople?.length > 0)) && (
                 <div className="mb-2">
                   <p className="text-xs text-gray-500 mb-1">Tagged:</p>
                   <div className="flex flex-wrap gap-1">
-                    {(photo as any).person_ids?.map((personId: string, idx: number) => (
-                      <Link
-                        key={personId}
-                        to={`/person/${personId}`}
-                        className="text-xs text-primary-600 hover:text-primary-700 hover:underline"
-                      >
-                        {(photo as any).person_names?.[idx]}
-                      </Link>
+                    {[
+                      ...((photo as any).taggedPeople || []).map((taggedPerson: any) => (
+                        <Link
+                          key={taggedPerson.id}
+                          to={`/person/${taggedPerson.id}`}
+                          className="text-xs text-primary-600 hover:text-primary-700 hover:underline"
+                        >
+                          {taggedPerson.display_name || taggedPerson.full_name}
+                        </Link>
+                      )),
+                      ...((photo as any).additionalPeople || []).map((name: string, idx: number) => (
+                        <span key={`additional-${idx}`} className="text-xs text-gray-700">{name}</span>
+                      ))
+                    ].map((item, idx, arr) => (
+                      <span key={idx}>
+                        {item}
+                        {idx < arr.length - 1 && ', '}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -603,7 +641,10 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tagged People <span className="text-gray-400 text-xs">(optional)</span>
                   </label>
-                  {editTaggedPeople.length > 0 && (
+                  <p className="text-xs text-gray-500 mb-3">
+                    Search for people in the database or add names manually.
+                  </p>
+                  {(editTaggedPeople.length > 0 || editAdditionalPeople.length > 0) && (
                     <div className="flex flex-wrap gap-2 mb-3">
                       {editTaggedPeople.map(taggedPerson => (
                         <span
@@ -614,6 +655,22 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
                           <button
                             type="button"
                             onClick={() => handleRemoveTaggedPerson(taggedPerson.id)}
+                            disabled={processing === editingPhoto}
+                            className="hover:text-primary-900 disabled:opacity-50"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      {editAdditionalPeople.map((name, idx) => (
+                        <span
+                          key={`additional-${idx}`}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
+                        >
+                          {name}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAdditionalPerson(name)}
                             disabled={processing === editingPhoto}
                             className="hover:text-primary-900 disabled:opacity-50"
                           >
@@ -633,28 +690,44 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
                         setShowTagDropdown(true)
                       }}
                       onFocus={() => tagSearchTerm.length >= 2 && setShowTagDropdown(true)}
-                      placeholder="Search for a person..."
+                      placeholder="Search for a person or type a name..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                       disabled={processing === editingPhoto}
                     />
-                    {showTagDropdown && tagSearchTerm.length >= 2 && tagSearchResults.length > 0 && (
+                    {showTagDropdown && tagSearchTerm.length >= 2 && (
                       <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {tagSearchLoading ? (
                           <div className="px-4 py-2 text-sm text-gray-500">Searching...</div>
                         ) : (
-                          tagSearchResults
-                            .filter(searchPerson => !editTaggedPeople.find(p => p.id === searchPerson.id))
-                            .slice(0, 10)
-                            .map((searchPerson) => (
-                              <button
-                                key={searchPerson.id}
-                                type="button"
-                                onClick={() => handleAddTaggedPerson(searchPerson)}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                              >
-                                {searchPerson.display_name || searchPerson.full_name}
-                              </button>
-                            ))
+                          <>
+                            {tagSearchResults
+                              .filter(searchPerson => !editTaggedPeople.find(p => p.id === searchPerson.id))
+                              .slice(0, 10)
+                              .map((searchPerson) => (
+                                <button
+                                  key={searchPerson.id}
+                                  type="button"
+                                  onClick={() => handleAddTaggedPerson(searchPerson)}
+                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm border-b border-gray-100 last:border-0"
+                                >
+                                  {searchPerson.display_name || searchPerson.full_name}
+                                </button>
+                              ))}
+                            {tagSearchTerm.trim() && (
+                              <>
+                                {tagSearchResults.length > 0 && (
+                                  <div className="border-t border-gray-200"></div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddAdditionalPerson(tagSearchTerm)}
+                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-primary-600 font-medium"
+                                >
+                                  + Add "{tagSearchTerm.trim()}"
+                                </button>
+                              </>
+                            )}
+                          </>
                         )}
                       </div>
                     )}

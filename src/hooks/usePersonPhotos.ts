@@ -28,6 +28,7 @@ export function usePersonPhotos(personId: string) {
               submitter_phone,
               approximate_date,
               event_context,
+              additional_people,
               status,
               submitted_at,
               reviewed_at,
@@ -73,11 +74,24 @@ export function usePersonPhotos(personId: string) {
         const filteredPhotos = (photosData || [])
           .map((item: any) => item.photos)
           .filter((photo: any) => photo && photo.status === 'approved')
-          .map((photo: any) => ({
-            ...photo,
-            file_url: photo.photo_url,
-            taggedPeople: taggedPeopleMap.get(photo.id) || [],
-          }))
+          .map((photo: any) => {
+            let additionalPeople: string[] = []
+            try {
+              if (photo.additional_people) {
+                additionalPeople = typeof photo.additional_people === 'string' 
+                  ? JSON.parse(photo.additional_people) 
+                  : photo.additional_people
+              }
+            } catch (e) {
+              console.error('Failed to parse additional_people:', e)
+            }
+            return {
+              ...photo,
+              file_url: photo.photo_url,
+              taggedPeople: taggedPeopleMap.get(photo.id) || [],
+              additionalPeople: additionalPeople || [],
+            }
+          })
         
         setPhotos(filteredPhotos)
       } catch (err) {

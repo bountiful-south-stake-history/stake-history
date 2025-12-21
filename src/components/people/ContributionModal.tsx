@@ -40,6 +40,7 @@ interface PhotoFile {
   approximateDate: string
   eventContext: string
   taggedPeople: Person[]
+  additionalPeople: string[]
 }
 
 export function ContributionModal({ person, onUploadComplete, onCancel }: ContributionModalProps) {
@@ -135,6 +136,20 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
     setTagSearchPhotoIndex(null)
   }
 
+  const handleAddAdditionalPerson = (name: string, photoIndex?: number) => {
+    if (photoIndex !== undefined) {
+      const updated = [...photoFiles]
+      const trimmedName = name.trim()
+      if (trimmedName && !updated[photoIndex].additionalPeople.includes(trimmedName)) {
+        updated[photoIndex].additionalPeople = [...updated[photoIndex].additionalPeople, trimmedName]
+        setPhotoFiles(updated)
+      }
+    }
+    setTagSearchTerm('')
+    setShowTagDropdown(false)
+    setTagSearchPhotoIndex(null)
+  }
+
   const handleRemoveTaggedPerson = (personId: string, photoIndex?: number) => {
     if (photoIndex !== undefined) {
       const updated = [...photoFiles]
@@ -143,6 +158,12 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
     } else {
       setTaggedPeople(taggedPeople.filter(p => p.id !== personId))
     }
+  }
+
+  const handleRemoveAdditionalPerson = (name: string, photoIndex: number) => {
+    const updated = [...photoFiles]
+    updated[photoIndex].additionalPeople = updated[photoIndex].additionalPeople.filter(n => n !== name)
+    setPhotoFiles(updated)
   }
 
   const validateImageFile = (file: File): boolean => {
@@ -216,6 +237,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
             approximateDate: '',
             eventContext: '',
             taggedPeople: [],
+            additionalPeople: [],
           })
           if (newPhotos.length === imageFiles.length) {
             setPhotoFiles([...photoFiles, ...newPhotos])
@@ -330,6 +352,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
           approximateDate: '',
           eventContext: '',
           taggedPeople: [],
+          additionalPeople: [],
         })
         if (newPhotos.length === files.length) {
           setPhotoFiles([...photoFiles, ...newPhotos])
@@ -697,6 +720,17 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
           .insert(photoPeopleRecords)
 
         if (photoPeopleError) throw photoPeopleError
+
+        if (photoFile.additionalPeople.length > 0) {
+          const { error: updateAdditionalError } = await supabase
+            .from('photos')
+            .update({
+              additional_people: JSON.stringify(photoFile.additionalPeople),
+            })
+            .eq('id', insertedPhoto.id)
+
+          if (updateAdditionalError) throw updateAdditionalError
+        }
       }
 
       setSuccess(true)
@@ -1234,13 +1268,13 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
                           </div>
                           <div className="border-t border-gray-200 pt-4 mt-4">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Tag additional people in this photo <span className="text-gray-400 text-xs">(optional)</span>
+                              Tag people in this photo <span className="text-gray-400 text-xs">(optional)</span>
                             </label>
                             <p className="text-xs text-gray-500 mb-3">
-                              This photo will automatically be linked to {person.full_name}. You can tag additional people here.
+                              This photo will automatically be linked to {person.full_name}. Search for people in the database or add names manually.
                             </p>
                             
-                            {photo.taggedPeople.length > 0 && (
+                            {(photo.taggedPeople.length > 0 || photo.additionalPeople.length > 0) && (
                               <div className="flex flex-wrap gap-2 mb-3">
                                 {photo.taggedPeople.map(taggedPerson => (
                                   <span
@@ -1251,6 +1285,22 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
                                     <button
                                       type="button"
                                       onClick={() => handleRemoveTaggedPerson(taggedPerson.id, index)}
+                                      disabled={submitting || success}
+                                      className="hover:text-primary-900 disabled:opacity-50"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                                {photo.additionalPeople.map((name, nameIndex) => (
+                                  <span
+                                    key={`additional-${nameIndex}`}
+                                    className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
+                                  >
+                                    {name}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveAdditionalPerson(name, index)}
                                       disabled={submitting || success}
                                       className="hover:text-primary-900 disabled:opacity-50"
                                     >
@@ -1276,28 +1326,44 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
                                     setShowTagDropdown(true)
                                   }
                                 }}
-                                placeholder="Search for a person..."
+                                placeholder="Search for a person or type a name..."
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 disabled={submitting || success}
                               />
-                              {showTagDropdown && tagSearchPhotoIndex === index && tagSearchTerm.length >= 2 && tagSearchResults.length > 0 && (
+                              {showTagDropdown && tagSearchPhotoIndex === index && tagSearchTerm.length >= 2 && (
                                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                   {tagSearchLoading ? (
                                     <div className="px-4 py-2 text-sm text-gray-500">Searching...</div>
                                   ) : (
-                                    tagSearchResults
-                                      .filter(searchPerson => searchPerson.id !== person.id && !photo.taggedPeople.find(p => p.id === searchPerson.id))
-                                      .slice(0, 10)
-                                      .map((searchPerson) => (
-                                        <button
-                                          key={searchPerson.id}
-                                          type="button"
-                                          onClick={() => handleAddTaggedPerson(searchPerson, index)}
-                                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                                        >
-                                          {searchPerson.display_name || searchPerson.full_name}
-                                        </button>
-                                      ))
+                                    <>
+                                      {tagSearchResults
+                                        .filter(searchPerson => searchPerson.id !== person.id && !photo.taggedPeople.find(p => p.id === searchPerson.id))
+                                        .slice(0, 10)
+                                        .map((searchPerson) => (
+                                          <button
+                                            key={searchPerson.id}
+                                            type="button"
+                                            onClick={() => handleAddTaggedPerson(searchPerson, index)}
+                                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm border-b border-gray-100 last:border-0"
+                                          >
+                                            {searchPerson.display_name || searchPerson.full_name}
+                                          </button>
+                                        ))}
+                                      {tagSearchTerm.trim() && (
+                                        <>
+                                          {tagSearchResults.length > 0 && (
+                                            <div className="border-t border-gray-200"></div>
+                                          )}
+                                          <button
+                                            type="button"
+                                            onClick={() => handleAddAdditionalPerson(tagSearchTerm, index)}
+                                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-primary-600 font-medium"
+                                          >
+                                            + Add "{tagSearchTerm.trim()}"
+                                          </button>
+                                        </>
+                                      )}
+                                    </>
                                   )}
                                 </div>
                               )}

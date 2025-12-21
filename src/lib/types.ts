@@ -105,6 +105,7 @@ export interface Photo {
   id: string
   photo_url: string
   caption?: string
+  additional_people?: string | string[]
   submitter_name: string
   submitter_email: string
   submitter_phone?: string

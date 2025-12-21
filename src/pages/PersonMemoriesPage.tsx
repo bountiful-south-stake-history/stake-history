@@ -285,19 +285,27 @@ export function PersonMemoriesPage() {
                       <span className="text-gray-400">Event:</span> {photo.event_context}
                     </p>
                   )}
-                  {(photo as any).taggedPeople && (photo as any).taggedPeople.length > 0 && (
+                  {((photo as any).taggedPeople?.length > 0 || (photo as any).additionalPeople?.length > 0) && (
                     <p className="text-xs text-gray-500 mt-1">
                       <span className="text-gray-400">Tagged:</span>{' '}
-                      {(photo as any).taggedPeople.map((taggedPerson: any, idx: number) => (
-                        <span key={taggedPerson.id}>
+                      {[
+                        ...((photo as any).taggedPeople || []).map((taggedPerson: any) => (
                           <Link
+                            key={taggedPerson.id}
                             to={`/person/${taggedPerson.id}`}
                             className="text-primary-600 hover:text-primary-700 hover:underline"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {taggedPerson.display_name || taggedPerson.full_name}
                           </Link>
-                          {idx < (photo as any).taggedPeople.length - 1 && ', '}
+                        )),
+                        ...((photo as any).additionalPeople || []).map((name: string) => (
+                          <span key={`additional-${name}`}>{name}</span>
+                        ))
+                      ].map((item, idx, arr) => (
+                        <span key={idx}>
+                          {item}
+                          {idx < arr.length - 1 && ', '}
                         </span>
                       ))}
                     </p>

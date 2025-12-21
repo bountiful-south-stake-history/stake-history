@@ -29,6 +29,7 @@ export function usePendingPhotos() {
           submitter_phone,
           approximate_date,
           event_context,
+          additional_people,
           submitted_at,
           status,
           reviewed_at,
@@ -54,26 +55,39 @@ export function usePendingPhotos() {
           
           const { data: photoPeopleData } = await supabase
             .from('photo_people')
-            .select('person_id')
+            .select(`
+              person_id,
+              people:person_id (
+                id,
+                display_name,
+                full_name
+              )
+            `)
             .eq('photo_id', photo.id)
 
-          const personNames: string[] = []
-          const personIds: string[] = []
+          const taggedPeople: Array<{ id: string; display_name?: string; full_name: string }> = []
+          let additionalPeople: string[] = []
           
           if (photoPeopleData && photoPeopleData.length > 0) {
-            const personIdsList = photoPeopleData.map((item: any) => item.person_id)
-            
-            const { data: peopleData } = await supabase
-              .from('people')
-              .select('id, full_name, display_name')
-              .in('id', personIdsList)
-            
-            if (peopleData) {
-              peopleData.forEach((person: any) => {
-                personIds.push(person.id)
-                personNames.push(person.display_name || person.full_name)
-              })
+            photoPeopleData.forEach((item: any) => {
+              if (item.people) {
+                taggedPeople.push({
+                  id: item.people.id,
+                  display_name: item.people.display_name,
+                  full_name: item.people.full_name,
+                })
+              }
+            })
+          }
+
+          try {
+            if (photo.additional_people) {
+              additionalPeople = typeof photo.additional_people === 'string' 
+                ? JSON.parse(photo.additional_people) 
+                : photo.additional_people
             }
+          } catch (e) {
+            console.error('Failed to parse additional_people:', e)
           }
           
           let displayUrl = photo.photo_url
@@ -108,8 +122,8 @@ export function usePendingPhotos() {
             ...photo,
             photo_url: displayUrl, // Use signed URL if available
             file_url: displayUrl, // Map photo_url to file_url for compatibility
-            person_ids: personIds,
-            person_names: personNames,
+            taggedPeople,
+            additionalPeople: additionalPeople || [],
           }
         })
       )
