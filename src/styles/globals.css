@@ -28,3 +28,39 @@
   }
 }
 
+@layer utilities {
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
+
+  @keyframes float-subtle {
+    0%, 100% {
+      transform: translateX(0) translateY(0);
+      opacity: 1;
+    }
+    50% {
+      transform: translateX(-5px) translateY(-3px);
+      opacity: 0.85;
+    }
+  }
+
+  .animate-float-subtle {
+    animation: float-subtle 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .guidance-arrow {
+      animation: none !important;
+    }
+  }
+}
+

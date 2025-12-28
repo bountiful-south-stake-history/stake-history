@@ -6,9 +6,10 @@ import { usePersonMemories } from '../hooks/usePersonMemories'
 import { usePersonPhotos } from '../hooks/usePersonPhotos'
 import { useAuth } from '../hooks/useAuth'
 import { useUserProfile } from '../hooks/useUserProfile'
-import { PortraitDisplay } from '../components/people/PortraitDisplay'
+import { PersonPageAvatar } from '../components/people/PersonPageAvatar'
 import { ContributionModal } from '../components/people/ContributionModal'
 import { AuthModal } from '../components/auth/AuthModal'
+import { ContributionNudge } from '../components/ui/ContributionNudge'
 import { formatCallingRange, parseLocalDate } from '../lib/utils'
 
 const relationshipLabels: Record<string, string> = {
@@ -79,10 +80,14 @@ export function PersonMemoriesPage() {
 
       <div className="mb-8">
         <div className="flex items-start gap-6 mb-6">
-          <PortraitDisplay person={person} onUploadComplete={() => window.location.reload()} lightboxMode={true} />
+          <PersonPageAvatar
+            person={person}
+            onContributeClick={() => setShowContributeModal(true)}
+            onUploadComplete={() => window.location.reload()}
+          />
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="flex-1">
                 <h1 className="text-4xl font-bold text-primary-700 mb-2">
                   {person.display_name || person.full_name}
                 </h1>
@@ -94,25 +99,31 @@ export function PersonMemoriesPage() {
                 )}
               </div>
               {!person.redacted && (
-                <button
-                  onClick={() => setShowContributeModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors whitespace-nowrap"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <div className="flex flex-col items-end gap-2.5">
+                  <button
+                    onClick={() => setShowContributeModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors whitespace-nowrap"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  <span>Contribute</span>
-                </button>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    <span>Contribute</span>
+                  </button>
+                  <ContributionNudge
+                    words={['Photos', 'Memories', 'Corrections']}
+                    interval={3600}
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -350,6 +361,7 @@ export function PersonMemoriesPage() {
             window.location.reload()
           }}
           onCancel={() => setShowContributeModal(false)}
+          initialType={!person.portrait_url && !person.portrait_pending ? 'portrait' : undefined}
         />
       )}
 

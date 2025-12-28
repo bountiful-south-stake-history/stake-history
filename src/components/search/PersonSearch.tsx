@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePeopleSearch } from '../../hooks/usePeopleSearch'
 import { supabase } from '../../lib/supabase'
+import { GuidanceArrow } from '../ui/GuidanceArrow'
 import type { Person, Calling, Position, Organization } from '../../lib/types'
 
 interface PersonWithCalling extends Person {
@@ -16,6 +17,7 @@ export function PersonSearch() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [peopleWithCallings, setPeopleWithCallings] = useState<PersonWithCalling[]>([])
+  const [showHint, setShowHint] = useState(true)
   const searchRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const { people, loading } = usePeopleSearch(searchTerm)
@@ -106,37 +108,51 @@ export function PersonSearch() {
 
   return (
     <div ref={searchRef} className="relative w-full max-w-2xl mx-auto">
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <svg
-            className="h-6 w-6 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
+      {showHint && (
+        <div className="mb-4 flex justify-center md:hidden">
+          <GuidanceArrow direction="down" />
         </div>
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value)
-            setShowDropdown(true)
-          }}
-          onFocus={() => {
-            if (searchTerm && displayResults.length > 0) {
+      )}
+      <div className="relative flex items-center gap-3">
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <svg
+              className="h-6 w-6 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
               setShowDropdown(true)
-            }
-          }}
-          placeholder="Search for a person..."
-          className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white shadow-sm"
-        />
+              setShowHint(false)
+            }}
+            onFocus={() => {
+              if (searchTerm && displayResults.length > 0) {
+                setShowDropdown(true)
+              }
+              setShowHint(false)
+            }}
+            placeholder="Search for a person..."
+            className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white shadow-sm"
+          />
+        </div>
+        {showHint && (
+          <div className="hidden md:block flex-shrink-0">
+            <GuidanceArrow direction="left" />
+          </div>
+        )}
       </div>
 
       {showDropdown && searchTerm.length >= 2 && (

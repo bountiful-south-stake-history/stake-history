@@ -10,6 +10,7 @@ interface ContributionModalProps {
   person: Person
   onUploadComplete: () => void
   onCancel: () => void
+  initialType?: 'portrait' | 'correction' | 'memory' | 'photos'
 }
 
 type ContributionType = 'portrait' | 'correction' | 'memory' | 'photos'
@@ -43,8 +44,8 @@ interface PhotoFile {
   additionalPeople: string[]
 }
 
-export function ContributionModal({ person, onUploadComplete, onCancel }: ContributionModalProps) {
-  const [contributionType, setContributionType] = useState<ContributionType>('portrait')
+export function ContributionModal({ person, onUploadComplete, onCancel, initialType }: ContributionModalProps) {
+  const [contributionType, setContributionType] = useState<ContributionType>(initialType ?? 'portrait')
   const [submitterName, setSubmitterName] = useState('')
   const [submitterEmail, setSubmitterEmail] = useState('')
   const [submitterPhone, setSubmitterPhone] = useState('')
@@ -539,7 +540,6 @@ export function ContributionModal({ person, onUploadComplete, onCancel }: Contri
       console.log('Portrait submission created successfully')
 
       setSuccess(true)
-      setShowSuccessModal(true)
       setShowSuccessModal(true)
     } catch (err) {
       console.error('Portrait upload error:', err)
