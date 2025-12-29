@@ -4,6 +4,7 @@ import 'react-image-crop/dist/ReactCrop.css'
 import imageCompression from 'browser-image-compression'
 import { supabase } from '../../lib/supabase'
 import { usePeopleSearch } from '../../hooks/usePeopleSearch'
+import { useAuth } from '../../hooks/useAuth'
 import type { Person } from '../../lib/types'
 
 interface ContributionModalProps {
@@ -83,8 +84,10 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
   const imgRef = useRef<HTMLImageElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photosInputRef = useRef<HTMLInputElement>(null)
+  const [hasAutoPopulated, setHasAutoPopulated] = useState(false)
   
   const { people: tagSearchResults, loading: tagSearchLoading } = usePeopleSearch(tagSearchTerm)
+  const { user } = useAuth()
 
   // Clear password fields when modal closes
   useEffect(() => {
@@ -95,8 +98,53 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
       setRegisterAlso(false)
       setRegistrationStatus(null)
       setRegistrationAttempted(false)
+      setHasAutoPopulated(false)
     }
   }, [])
+
+  // Reset registerAlso when user becomes logged in
+  useEffect(() => {
+    if (user) {
+      setRegisterAlso(false)
+      setPassword('')
+      setConfirmPassword('')
+      setFormErrors((prev) => ({ ...prev, password: undefined, confirmPassword: undefined }))
+      setRegistrationStatus(null)
+    }
+  }, [user])
+
+  // Auto-populate submitter info from logged-in user (only once when modal opens)
+  useEffect(() => {
+    if (user && !hasAutoPopulated) {
+      const autoPopulate = async () => {
+        // Set email from auth user if field is empty (use functional update to prevent overwriting)
+        if (user.email) {
+          setSubmitterEmail((prev) => (!prev.trim() ? user.email || '' : prev))
+        }
+
+        // Fetch display_name from user_profiles if name field is empty
+        try {
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select('display_name')
+            .eq('id', user.id)
+            .single()
+
+          if (!error && data?.display_name) {
+            // Double-check field is still empty before setting (user might have typed)
+            setSubmitterName((prev) => (!prev.trim() ? data.display_name : prev))
+          }
+        } catch (err) {
+          // Silently fail - user can still enter manually
+          console.warn('Failed to fetch user profile:', err)
+        }
+
+        setHasAutoPopulated(true)
+      }
+
+      autoPopulate()
+    }
+  }, [user, hasAutoPopulated]) // Only depend on user and hasAutoPopulated flag
 
   useEffect(() => {
     const checkPendingPortrait = async () => {
@@ -1124,116 +1172,120 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                   />
                 </div>
 
-                <div className="pt-2">
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={registerAlso}
-                      onChange={(e) => {
-                        setRegisterAlso(e.target.checked)
-                        if (!e.target.checked) {
-                          setPassword('')
-                          setConfirmPassword('')
-                          setFormErrors({ ...formErrors, password: undefined, confirmPassword: undefined })
-                          setRegistrationStatus(null)
-                        }
-                      }}
-                      disabled={submitting || success}
-                      className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Create an account so I can view additional photos and memories
-                    </span>
-                  </label>
-                </div>
-
-                {registerAlso && (
-                  <div className="space-y-4 pt-2 border-t border-gray-200">
-                    <div>
-                      <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                        Password <span className="text-red-500">*</span>
+                {!user && (
+                  <>
+                    <div className="pt-2">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={registerAlso}
+                          onChange={(e) => {
+                            setRegisterAlso(e.target.checked)
+                            if (!e.target.checked) {
+                              setPassword('')
+                              setConfirmPassword('')
+                              setFormErrors({ ...formErrors, password: undefined, confirmPassword: undefined })
+                              setRegistrationStatus(null)
+                            }
+                          }}
+                          disabled={submitting || success}
+                          className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Create an account so I can view additional photos and memories
+                        </span>
                       </label>
-                      <input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => {
-                          setPassword(e.target.value)
-                          if (formErrors.password) {
-                            setFormErrors({ ...formErrors, password: undefined })
-                          }
-                        }}
-                        onBlur={() => {
-                          if (registerAlso && !password) {
-                            setFormErrors({ ...formErrors, password: 'Password is required' })
-                          } else if (registerAlso && password.length < 6) {
-                            setFormErrors({ ...formErrors, password: 'Password must be at least 6 characters' })
-                          }
-                        }}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                          formErrors.password ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                        disabled={submitting || success}
-                      />
-                      {formErrors.password && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
-                      )}
                     </div>
 
-                    <div>
-                      <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
-                        Confirm Password <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="confirm-password"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => {
-                          setConfirmPassword(e.target.value)
-                          if (formErrors.confirmPassword) {
-                            setFormErrors({ ...formErrors, confirmPassword: undefined })
-                          }
-                        }}
-                        onBlur={() => {
-                          if (registerAlso && !confirmPassword) {
-                            setFormErrors({ ...formErrors, confirmPassword: 'Please confirm your password' })
-                          } else if (registerAlso && password !== confirmPassword) {
-                            setFormErrors({ ...formErrors, confirmPassword: 'Passwords do not match' })
-                          }
-                        }}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                          formErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                        disabled={submitting || success}
-                      />
-                      {formErrors.confirmPassword && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
+                    {registerAlso && (
+                      <div className="space-y-4 pt-2 border-t border-gray-200">
+                        <div>
+                          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                            Password <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => {
+                              setPassword(e.target.value)
+                              if (formErrors.password) {
+                                setFormErrors({ ...formErrors, password: undefined })
+                              }
+                            }}
+                            onBlur={() => {
+                              if (registerAlso && !password) {
+                                setFormErrors({ ...formErrors, password: 'Password is required' })
+                              } else if (registerAlso && password.length < 6) {
+                                setFormErrors({ ...formErrors, password: 'Password must be at least 6 characters' })
+                              }
+                            }}
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                              formErrors.password ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            disabled={submitting || success}
+                          />
+                          {formErrors.password && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
+                          )}
+                        </div>
 
-                {registrationStatus && (
-                  <div className={`px-4 py-3 rounded-lg border ${
-                    registrationStatus.type === 'success' 
-                      ? 'bg-green-50 border-green-200 text-green-700'
-                      : registrationStatus.type === 'info'
-                      ? 'bg-blue-50 border-blue-200 text-blue-700'
-                      : 'bg-red-50 border-red-200 text-red-700'
-                  }`}>
-                    <p className="text-sm">{registrationStatus.message}</p>
-                    {registrationStatus.type === 'info' && onOpenSignIn && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onOpenSignIn()
-                        }}
-                        className="mt-2 text-sm font-medium underline hover:no-underline"
-                      >
-                        Sign In
-                      </button>
+                        <div>
+                          <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
+                            Confirm Password <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            id="confirm-password"
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => {
+                              setConfirmPassword(e.target.value)
+                              if (formErrors.confirmPassword) {
+                                setFormErrors({ ...formErrors, confirmPassword: undefined })
+                              }
+                            }}
+                            onBlur={() => {
+                              if (registerAlso && !confirmPassword) {
+                                setFormErrors({ ...formErrors, confirmPassword: 'Please confirm your password' })
+                              } else if (registerAlso && password !== confirmPassword) {
+                                setFormErrors({ ...formErrors, confirmPassword: 'Passwords do not match' })
+                              }
+                            }}
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                              formErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            disabled={submitting || success}
+                          />
+                          {formErrors.confirmPassword && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
+                          )}
+                        </div>
+                      </div>
                     )}
-                  </div>
+
+                    {registrationStatus && (
+                      <div className={`px-4 py-3 rounded-lg border ${
+                        registrationStatus.type === 'success' 
+                          ? 'bg-green-50 border-green-200 text-green-700'
+                          : registrationStatus.type === 'info'
+                          ? 'bg-blue-50 border-blue-200 text-blue-700'
+                          : 'bg-red-50 border-red-200 text-red-700'
+                      }`}>
+                        <p className="text-sm">{registrationStatus.message}</p>
+                        {registrationStatus.type === 'info' && onOpenSignIn && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onOpenSignIn()
+                            }}
+                            className="mt-2 text-sm font-medium underline hover:no-underline"
+                          >
+                            Sign In
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <p className="text-xs text-gray-500 italic">
