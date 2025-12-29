@@ -32,14 +32,31 @@ export function useApprovedPortraits() {
 
       const portraitsWithSubmissions = await Promise.all(
         (peopleData || []).map(async (person) => {
-          const { data: submissionData } = await supabase
-            .from('portrait_submissions')
-            .select('submitter_name, submitter_email')
-            .eq('person_id', person.id)
-            .eq('status', 'approved')
-            .order('reviewed_at', { ascending: false })
-            .limit(1)
-            .single()
+          // Try to fetch submitter info, but don't fail if query errors
+          let submitterName: string | undefined = undefined
+          let submitterEmail: string | undefined = undefined
+
+          try {
+            const { data: submissionData, error: submissionError } = await supabase
+              .from('portrait_submissions')
+              .select('submitter_name, submitter_email')
+              .eq('person_id', person.id)
+              .eq('status', 'approved')
+              .order('reviewed_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+
+            if (!submissionError && submissionData) {
+              submitterName = submissionData.submitter_name || undefined
+              submitterEmail = submissionData.submitter_email || undefined
+            } else if (submissionError) {
+              // Log error but don't throw - submitter info is optional
+              console.warn(`Failed to fetch submitter info for person ${person.id}:`, submissionError.message)
+            }
+          } catch (err) {
+            // Handle any unexpected errors gracefully
+            console.warn(`Error fetching submitter info for person ${person.id}:`, err)
+          }
 
           return {
             person: {
@@ -52,8 +69,8 @@ export function useApprovedPortraits() {
             } as Person,
             portrait_url: person.portrait_url!,
             portrait_approved_at: person.portrait_approved_at || undefined,
-            submitter_name: submissionData?.submitter_name || undefined,
-            submitter_email: submissionData?.submitter_email || undefined,
+            submitter_name: submitterName,
+            submitter_email: submitterEmail,
           }
         })
       )
