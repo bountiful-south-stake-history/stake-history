@@ -1036,7 +1036,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-primary-700">
-              Contribute Information for {person.full_name}
+              Add Information for {person.full_name}
             </h2>
             <button
               onClick={onCancel}

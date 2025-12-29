@@ -23,7 +23,7 @@ export function AboutPage() {
             </p>
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Contribute Memories</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Add Memories</h3>
             <p className="text-gray-700">
               Members and families are invited to share memories, stories, and photographs of those who have served. These contributions help preserve the personal side of our stake's history for future generations.
             </p>

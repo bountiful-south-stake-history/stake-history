@@ -117,7 +117,7 @@ export function PersonMemoriesPage() {
                         d="M12 4v16m8-8H4"
                       />
                     </svg>
-                    <span>Contribute</span>
+                    <span>Add</span>
                   </button>
                   <ContributionNudge
                     words={['Photos', 'Memories', 'Corrections']}
@@ -342,13 +342,13 @@ export function PersonMemoriesPage() {
       {!hasContent && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
           <p className="text-lg text-gray-600 mb-4">
-            No memories have been shared yet. Be the first to contribute!
+            No memories have been shared yet. Be the first to add!
           </p>
           <button
             onClick={() => setShowContributeModal(true)}
             className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
           >
-            Contribute Information
+            Add Information
           </button>
         </div>
       )}
