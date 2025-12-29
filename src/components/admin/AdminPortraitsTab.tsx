@@ -416,89 +416,177 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
           {pendingPortraits.length === 0 ? (
             <div className="text-center py-8 text-gray-600">No pending portraits</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white border border-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Portrait</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Person Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted By</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {pendingPortraits.map((submission) => {
-                    const person = submission.person
-                    const personName = person?.display_name || person?.full_name || 'Unknown Person'
-                    const personId = submission.person_id
-                    
-                    const {
-                      data: { publicUrl: pendingPortraitUrl },
-                    } = supabase.storage.from('portraits').getPublicUrl(submission.portrait_url)
-                    
-                    return (
-                      <tr key={submission.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          <img
-                            src={pendingPortraitUrl}
-                            alt={personName}
-                            className="w-20 h-[100px] object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => setLightboxImage({ url: pendingPortraitUrl, personName })}
-                            onError={(e) => {
-                              if (person?.portrait_url) {
-                                (e.target as HTMLImageElement).src = person.portrait_url
-                              }
-                            }}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <Link
-                            to={`/person/${personId}`}
-                            className="text-primary-600 hover:text-primary-700 hover:underline"
-                          >
-                            {personName}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{submission.submitter_name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{submission.submitter_email}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{submission.submitter_phone || '-'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {submission.submitted_at
-                            ? new Date(submission.submitted_at).toLocaleDateString()
-                            : '-'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleApprove(submission.id)}
-                              disabled={processing === submission.id}
-                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+            <>
+              {/* Mobile Card Layout */}
+              <div className="grid gap-4 md:hidden">
+                {pendingPortraits.map((submission) => {
+                  const person = submission.person
+                  const personName = person?.display_name || person?.full_name || 'Unknown Person'
+                  const personId = submission.person_id
+                  
+                  const {
+                    data: { publicUrl: pendingPortraitUrl },
+                  } = supabase.storage.from('portraits').getPublicUrl(submission.portrait_url)
+                  
+                  return (
+                    <div key={submission.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                      <div className="flex flex-col gap-4">
+                        <img
+                          src={pendingPortraitUrl}
+                          alt={personName}
+                          className="w-full h-48 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setLightboxImage({ url: pendingPortraitUrl, personName })}
+                          onError={(e) => {
+                            if (person?.portrait_url) {
+                              (e.target as HTMLImageElement).src = person.portrait_url
+                            }
+                          }}
+                        />
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-xs text-gray-500">Name:</span>{' '}
+                            <Link
+                              to={`/person/${personId}`}
+                              className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
                             >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() =>
-                                setShowRejectModal({
-                                  id: submission.id,
-                                  name: personName,
-                                })
-                              }
-                              disabled={processing === submission.id}
-                              className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
-                            >
-                              Reject
-                            </button>
+                              {personName}
+                            </Link>
                           </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          <div>
+                            <span className="text-xs text-gray-500">Submitted:</span>{' '}
+                            <span className="text-sm text-gray-900">
+                              {submission.submitted_at
+                                ? new Date(submission.submitted_at).toLocaleDateString()
+                                : '-'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-xs text-gray-500">By:</span>{' '}
+                            <span className="text-sm text-gray-900">{submission.submitter_name}</span>
+                          </div>
+                          <div>
+                            <span className="text-xs text-gray-500">Email:</span>{' '}
+                            <span className="text-sm text-gray-600">{submission.submitter_email}</span>
+                          </div>
+                          {submission.submitter_phone && (
+                            <div>
+                              <span className="text-xs text-gray-500">Phone:</span>{' '}
+                              <span className="text-sm text-gray-600">{submission.submitter_phone}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2 pt-2 border-t border-gray-200">
+                          <button
+                            onClick={() => handleApprove(submission.id)}
+                            disabled={processing === submission.id}
+                            className="flex-1 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() =>
+                              setShowRejectModal({
+                                id: submission.id,
+                                name: personName,
+                              })
+                            }
+                            disabled={processing === submission.id}
+                            className="flex-1 px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full bg-white border border-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Portrait</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Person Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted By</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {pendingPortraits.map((submission) => {
+                      const person = submission.person
+                      const personName = person?.display_name || person?.full_name || 'Unknown Person'
+                      const personId = submission.person_id
+                      
+                      const {
+                        data: { publicUrl: pendingPortraitUrl },
+                      } = supabase.storage.from('portraits').getPublicUrl(submission.portrait_url)
+                      
+                      return (
+                        <tr key={submission.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <img
+                              src={pendingPortraitUrl}
+                              alt={personName}
+                              className="w-20 h-[100px] object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setLightboxImage({ url: pendingPortraitUrl, personName })}
+                              onError={(e) => {
+                                if (person?.portrait_url) {
+                                  (e.target as HTMLImageElement).src = person.portrait_url
+                                }
+                              }}
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <Link
+                              to={`/person/${personId}`}
+                              className="text-primary-600 hover:text-primary-700 hover:underline"
+                            >
+                              {personName}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{submission.submitter_name}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{submission.submitter_email}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{submission.submitter_phone || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {submission.submitted_at
+                              ? new Date(submission.submitted_at).toLocaleDateString()
+                              : '-'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleApprove(submission.id)}
+                                disabled={processing === submission.id}
+                                className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setShowRejectModal({
+                                    id: submission.id,
+                                    name: personName,
+                                  })
+                                }
+                                disabled={processing === submission.id}
+                                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </>
       )}
@@ -613,8 +701,67 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                 }
 
                 return (
-                  <div key={portrait.person.id} className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="flex items-start gap-4">
+                  <div key={portrait.person.id} className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+                    {/* Mobile Card Layout */}
+                    <div className="md:hidden flex flex-col gap-4">
+                      <img
+                        src={portrait.portrait_url}
+                        alt={personName}
+                        className="w-full h-48 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setLightboxImage({ url: portrait.portrait_url, personName })}
+                      />
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-xs text-gray-500">Name:</span>{' '}
+                          <Link
+                            to={`/person/${portrait.person.id}`}
+                            className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
+                          >
+                            {personName}
+                          </Link>
+                        </div>
+                        {portrait.portrait_approved_at && (
+                          <div>
+                            <span className="text-xs text-gray-500">Approved:</span>{' '}
+                            <span className="text-sm text-gray-900">
+                              {new Date(portrait.portrait_approved_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                        {portrait.submitter_name && (
+                          <div>
+                            <span className="text-xs text-gray-500">Submitted by:</span>{' '}
+                            <span className="text-sm text-gray-900">{portrait.submitter_name}</span>
+                            {portrait.submitter_email && (
+                              <span className="text-sm text-gray-600"> ({portrait.submitter_email})</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 pt-2 border-t border-gray-200">
+                        <button
+                          onClick={() => handleStartEdit(portrait.person.id)}
+                          disabled={processing === portrait.person.id}
+                          className="flex-1 px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 font-medium"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(portrait.person.id)}
+                          disabled={processing === portrait.person.id}
+                          className={`flex-1 px-4 py-2 rounded disabled:opacity-50 font-medium ${
+                            deleteConfirmState[portrait.person.id] === 'warning'
+                              ? 'bg-yellow-50 border-yellow-400 text-yellow-700 hover:bg-yellow-100 border-2'
+                              : 'border-red-300 text-red-700 hover:bg-red-50 border-2'
+                          }`}
+                        >
+                          {deleteConfirmState[portrait.person.id] === 'warning' ? 'Are you sure?' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Desktop Layout */}
+                    <div className="hidden md:flex items-start gap-4">
                       <img
                         src={portrait.portrait_url}
                         alt={personName}
