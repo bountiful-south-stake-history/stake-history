@@ -800,25 +800,73 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
     try {
       for (const photoFile of photoFiles) {
+        console.log('Starting photo upload for:', photoFile.file.name)
         const compressedFile = await compressImage(photoFile.file)
-        const filePath = `photos/pending/${person.id}/${Date.now()}-${photoFile.file.name}`
+        const timestamp = Date.now()
+        const sanitizedName = photoFile.file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+        const filePath = `photos/pending/${person.id}/${timestamp}-${sanitizedName}`
+        
+        console.log('Uploading to storage:', {
+          bucket: 'photos',
+          path: filePath,
+          fileSize: compressedFile.size,
+          fileType: compressedFile.type
+        })
 
-        const { error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('photos')
           .upload(filePath, compressedFile, {
             cacheControl: '3600',
             upsert: false,
           })
 
-        if (uploadError) throw uploadError
+        console.log('Storage upload response:', {
+          data: uploadData,
+          error: uploadError,
+          errorMessage: uploadError?.message,
+          errorName: uploadError?.name
+        })
 
+        if (uploadError) {
+          console.error('Storage upload failed:', uploadError)
+          let errorMsg = uploadError.message || 'Unknown storage error'
+          
+          // Check for 403 Forbidden errors
+          const errorStr = JSON.stringify(uploadError).toLowerCase()
+          if (errorStr.includes('403') || errorMsg.includes('403') || errorMsg.toLowerCase().includes('forbidden')) {
+            errorMsg = 'Permission denied. Please check storage bucket policies allow uploads to the photos bucket.'
+          } else if (errorMsg.toLowerCase().includes('bucket')) {
+            errorMsg = 'Storage bucket "photos" not found. Please create it in Supabase Dashboard > Storage.'
+          } else if (errorMsg.toLowerCase().includes('permission') || errorMsg.toLowerCase().includes('denied')) {
+            errorMsg = 'Permission denied. Please check storage bucket policies allow public uploads.'
+          }
+          
+          throw new Error(`Storage upload failed: ${errorMsg}`)
+        }
+
+        if (!uploadData) {
+          throw new Error('Storage upload returned no data')
+        }
+
+        console.log('Storage upload successful, getting public URL for path:', filePath)
         const {
           data: { publicUrl },
         } = supabase.storage.from('photos').getPublicUrl(filePath)
 
-        const { data: insertedPhoto, error: photoError } = await supabase
+        console.log('Photo URL generated:', publicUrl)
+
+        if (!publicUrl) {
+          throw new Error('Failed to generate public URL for uploaded photo')
+        }
+
+        // Generate UUID client-side to avoid needing SELECT permission after insert
+        const photoId = crypto.randomUUID()
+        
+        console.log('Inserting to DB with URL:', publicUrl, 'Photo ID:', photoId)
+        const { error: photoError } = await supabase
           .from('photos')
           .insert({
+            id: photoId,
             photo_url: publicUrl,
             caption: photoFile.caption,
             submitter_name: submitterName,
@@ -828,17 +876,33 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
             event_context: photoFile.eventContext || null,
             status: 'pending',
           })
-          .select()
-          .single()
 
-        if (photoError) throw photoError
-        if (!insertedPhoto) throw new Error('Failed to insert photo')
+        console.log('Database insert response:', {
+          photoId,
+          error: photoError,
+          errorMessage: photoError?.message,
+          errorCode: photoError?.code
+        })
+
+        if (photoError) {
+          console.error('Database insert failed:', photoError)
+          // Try to clean up the uploaded file
+          try {
+            await supabase.storage.from('photos').remove([filePath])
+            console.log('Cleaned up uploaded file after DB insert failure')
+          } catch (cleanupErr) {
+            console.warn('Failed to cleanup uploaded file:', cleanupErr)
+          }
+          throw photoError
+        }
+
+        console.log('Photo inserted successfully with ID:', photoId)
 
         const allPeopleIds = [person.id, ...photoFile.taggedPeople.map(p => p.id)]
         const uniquePeopleIds = Array.from(new Set(allPeopleIds))
 
         const photoPeopleRecords = uniquePeopleIds.map(personId => ({
-          photo_id: insertedPhoto.id,
+          photo_id: photoId,
           person_id: personId,
         }))
 
@@ -854,9 +918,13 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
             .update({
               additional_people: JSON.stringify(photoFile.additionalPeople),
             })
-            .eq('id', insertedPhoto.id)
+            .eq('id', photoId)
 
-          if (updateAdditionalError) throw updateAdditionalError
+          if (updateAdditionalError) {
+            console.error('Failed to update additional_people:', updateAdditionalError)
+            // Don't throw - this is non-critical, photo was already inserted
+            console.warn('Photo inserted but additional_people update failed')
+          }
         }
       }
 
