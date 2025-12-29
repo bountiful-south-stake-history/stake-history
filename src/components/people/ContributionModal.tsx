@@ -11,6 +11,7 @@ interface ContributionModalProps {
   onUploadComplete: () => void
   onCancel: () => void
   initialType?: 'portrait' | 'correction' | 'memory' | 'photos'
+  onOpenSignIn?: () => void
 }
 
 type ContributionType = 'portrait' | 'correction' | 'memory' | 'photos'
@@ -32,6 +33,8 @@ interface FormErrors {
   relationship?: string
   photos?: string
   photoCaptions?: Record<number, string>
+  password?: string
+  confirmPassword?: string
 }
 
 interface PhotoFile {
@@ -44,7 +47,7 @@ interface PhotoFile {
   additionalPeople: string[]
 }
 
-export function ContributionModal({ person, onUploadComplete, onCancel, initialType }: ContributionModalProps) {
+export function ContributionModal({ person, onUploadComplete, onCancel, initialType, onOpenSignIn }: ContributionModalProps) {
   const [contributionType, setContributionType] = useState<ContributionType>(initialType ?? 'portrait')
   const [submitterName, setSubmitterName] = useState('')
   const [submitterEmail, setSubmitterEmail] = useState('')
@@ -72,11 +75,28 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [hasPendingPortrait, setHasPendingPortrait] = useState(false)
   const [formErrors, setFormErrors] = useState<FormErrors>({})
+  const [registerAlso, setRegisterAlso] = useState(false)
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [registrationStatus, setRegistrationStatus] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null)
+  const [registrationAttempted, setRegistrationAttempted] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photosInputRef = useRef<HTMLInputElement>(null)
   
   const { people: tagSearchResults, loading: tagSearchLoading } = usePeopleSearch(tagSearchTerm)
+
+  // Clear password fields when modal closes
+  useEffect(() => {
+    return () => {
+      // Cleanup: clear password fields when component unmounts
+      setPassword('')
+      setConfirmPassword('')
+      setRegisterAlso(false)
+      setRegistrationStatus(null)
+      setRegistrationAttempted(false)
+    }
+  }, [])
 
   useEffect(() => {
     const checkPendingPortrait = async () => {
@@ -266,6 +286,20 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
       errors.email = 'Please enter a valid email address'
     }
 
+    if (registerAlso) {
+      if (!password) {
+        errors.password = 'Password is required'
+      } else if (password.length < 6) {
+        errors.password = 'Password must be at least 6 characters'
+      }
+
+      if (!confirmPassword) {
+        errors.confirmPassword = 'Please confirm your password'
+      } else if (password !== confirmPassword) {
+        errors.confirmPassword = 'Passwords do not match'
+      }
+    }
+
     if (contributionType === 'correction') {
       if (!correctionDescription.trim()) {
         errors.description = 'Please describe the correction needed'
@@ -446,6 +480,78 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
     return await imageCompression(file, options)
   }
 
+  const attemptRegistration = async (): Promise<void> => {
+    if (!registerAlso || registrationAttempted) {
+      return
+    }
+
+    setRegistrationAttempted(true)
+
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: submitterEmail.trim(),
+        password,
+        options: {
+          data: {
+            display_name: submitterName.trim(),
+          },
+        },
+      })
+
+      if (signUpError) {
+        console.error('Registration error:', signUpError)
+        
+        // Check if email already exists
+        if (signUpError.message?.toLowerCase().includes('already registered') || 
+            signUpError.message?.toLowerCase().includes('already exists') ||
+            signUpError.message?.toLowerCase().includes('user already registered')) {
+          setRegistrationStatus({
+            type: 'info',
+            message: 'Submission received. An account with this email already exists. Please sign in to view additional photos and memories.'
+          })
+        } else {
+          setRegistrationStatus({
+            type: 'error',
+            message: `Submission received. Account could not be created: ${signUpError.message || 'Unknown error'}`
+          })
+        }
+        return
+      }
+
+      if (data?.user) {
+        // Try to create user profile as fallback if trigger didn't work
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        try {
+          await supabase
+            .from('user_profiles')
+            .upsert({
+              id: data.user.id,
+              email: data.user.email || submitterEmail.trim(),
+              display_name: submitterName.trim(),
+              role: 'viewer',
+            }, {
+              onConflict: 'id'
+            })
+        } catch (profileErr) {
+          // Non-critical error - profile might have been created by trigger
+          console.warn('Profile creation fallback failed:', profileErr)
+        }
+
+        setRegistrationStatus({
+          type: 'success',
+          message: 'Submission received. Account created. You can now sign in to view additional photos and memories.'
+        })
+      }
+    } catch (err) {
+      console.error('Registration error details:', err)
+      setRegistrationStatus({
+        type: 'error',
+        message: `Submission received. Account could not be created: ${err instanceof Error ? err.message : 'Unknown error'}`
+      })
+    }
+  }
+
   const handlePortraitUpload = async () => {
     if (!selectedFile || !previewUrl || !completedCrop || !imgRef.current) {
       setError('Please select and crop an image')
@@ -454,6 +560,8 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
     setSubmitting(true)
     setError(null)
+    setRegistrationStatus(null)
+    setRegistrationAttempted(false)
 
     try {
       const croppedBlob = await getCroppedImg(imgRef.current, completedCrop)
@@ -541,6 +649,11 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
       setSuccess(true)
       setShowSuccessModal(true)
+
+      // Attempt registration after successful submission
+      if (registerAlso) {
+        await attemptRegistration()
+      }
     } catch (err) {
       console.error('Portrait upload error:', err)
       let errorMessage = 'Failed to upload portrait'
@@ -580,6 +693,8 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
     setSubmitting(true)
     setError(null)
+    setRegistrationStatus(null)
+    setRegistrationAttempted(false)
 
     try {
       const { error: insertError } = await supabase.from('correction_requests').insert({
@@ -596,6 +711,11 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
       setSuccess(true)
       setShowSuccessModal(true)
+
+      // Attempt registration after successful submission
+      if (registerAlso) {
+        await attemptRegistration()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit correction')
       setSubmitting(false)
@@ -657,6 +777,11 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
       setSuccess(true)
       setShowSuccessModal(true)
+
+      // Attempt registration after successful submission
+      if (registerAlso) {
+        await attemptRegistration()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit memory')
       setSubmitting(false)
@@ -670,6 +795,8 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
     setSubmitting(true)
     setError(null)
+    setRegistrationStatus(null)
+    setRegistrationAttempted(false)
 
     try {
       for (const photoFile of photoFiles) {
@@ -735,6 +862,11 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
       setSuccess(true)
       setShowSuccessModal(true)
+
+      // Attempt registration after successful submission
+      if (registerAlso) {
+        await attemptRegistration()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload photos')
       setSubmitting(false)
@@ -923,6 +1055,118 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                     disabled={submitting || success}
                   />
                 </div>
+
+                <div className="pt-2">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={registerAlso}
+                      onChange={(e) => {
+                        setRegisterAlso(e.target.checked)
+                        if (!e.target.checked) {
+                          setPassword('')
+                          setConfirmPassword('')
+                          setFormErrors({ ...formErrors, password: undefined, confirmPassword: undefined })
+                          setRegistrationStatus(null)
+                        }
+                      }}
+                      disabled={submitting || success}
+                      className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Create an account so I can view additional photos and memories
+                    </span>
+                  </label>
+                </div>
+
+                {registerAlso && (
+                  <div className="space-y-4 pt-2 border-t border-gray-200">
+                    <div>
+                      <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                        Password <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value)
+                          if (formErrors.password) {
+                            setFormErrors({ ...formErrors, password: undefined })
+                          }
+                        }}
+                        onBlur={() => {
+                          if (registerAlso && !password) {
+                            setFormErrors({ ...formErrors, password: 'Password is required' })
+                          } else if (registerAlso && password.length < 6) {
+                            setFormErrors({ ...formErrors, password: 'Password must be at least 6 characters' })
+                          }
+                        }}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                          formErrors.password ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        disabled={submitting || success}
+                      />
+                      {formErrors.password && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
+                        Confirm Password <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="confirm-password"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value)
+                          if (formErrors.confirmPassword) {
+                            setFormErrors({ ...formErrors, confirmPassword: undefined })
+                          }
+                        }}
+                        onBlur={() => {
+                          if (registerAlso && !confirmPassword) {
+                            setFormErrors({ ...formErrors, confirmPassword: 'Please confirm your password' })
+                          } else if (registerAlso && password !== confirmPassword) {
+                            setFormErrors({ ...formErrors, confirmPassword: 'Passwords do not match' })
+                          }
+                        }}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                          formErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        disabled={submitting || success}
+                      />
+                      {formErrors.confirmPassword && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {registrationStatus && (
+                  <div className={`px-4 py-3 rounded-lg border ${
+                    registrationStatus.type === 'success' 
+                      ? 'bg-green-50 border-green-200 text-green-700'
+                      : registrationStatus.type === 'info'
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-red-50 border-red-200 text-red-700'
+                  }`}>
+                    <p className="text-sm">{registrationStatus.message}</p>
+                    {registrationStatus.type === 'info' && onOpenSignIn && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onOpenSignIn()
+                        }}
+                        className="mt-2 text-sm font-medium underline hover:no-underline"
+                      >
+                        Sign In
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 <p className="text-xs text-gray-500 italic">
                   We may contact you if there are questions about this submission

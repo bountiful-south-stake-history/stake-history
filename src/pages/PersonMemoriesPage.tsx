@@ -362,6 +362,10 @@ export function PersonMemoriesPage() {
           }}
           onCancel={() => setShowContributeModal(false)}
           initialType={!person.portrait_url && !person.portrait_pending ? 'portrait' : undefined}
+          onOpenSignIn={() => {
+            setShowContributeModal(false)
+            setShowAuthModal(true)
+          }}
         />
       )}
 

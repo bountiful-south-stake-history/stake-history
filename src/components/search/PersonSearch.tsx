@@ -108,11 +108,6 @@ export function PersonSearch() {
 
   return (
     <div ref={searchRef} className="relative w-full max-w-2xl mx-auto">
-      {showHint && (
-        <div className="mb-4 flex justify-center md:hidden">
-          <GuidanceArrow direction="down" />
-        </div>
-      )}
       <div className="relative flex items-center gap-3">
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
