@@ -7,6 +7,7 @@ import { usePeopleSearch } from '../../hooks/usePeopleSearch'
 import { useAuth } from '../../hooks/useAuth'
 import type { Person } from '../../lib/types'
 import compressImage from 'browser-image-compression'
+import { PortraitLightbox } from '../people/PortraitLightbox'
 
 interface AdminPortraitsTabProps {
   onActionComplete?: () => void
@@ -30,6 +31,7 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
   const [deleteConfirmState, setDeleteConfirmState] = useState<Record<string, 'none' | 'warning' | 'modal'>>({})
   const [deleteConfirmText, setDeleteConfirmText] = useState<Record<string, string>>({})
   const [deleteTimeoutId, setDeleteTimeoutId] = useState<Record<string, NodeJS.Timeout>>({})
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; personName: string } | null>(null)
 
   const loading = viewMode === 'pending' ? pendingLoading : approvedLoading
   const error = viewMode === 'pending' ? pendingError : approvedError
@@ -443,7 +445,8 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                           <img
                             src={pendingPortraitUrl}
                             alt={personName}
-                            className="w-20 h-[100px] object-cover rounded"
+                            className="w-20 h-[100px] object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => setLightboxImage({ url: pendingPortraitUrl, personName })}
                             onError={(e) => {
                               if (person?.portrait_url) {
                                 (e.target as HTMLImageElement).src = person.portrait_url
@@ -615,7 +618,8 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                       <img
                         src={portrait.portrait_url}
                         alt={personName}
-                        className="w-20 h-[100px] object-cover rounded flex-shrink-0"
+                        className="w-20 h-[100px] object-cover rounded flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setLightboxImage({ url: portrait.portrait_url, personName })}
                       />
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900 mb-2">
@@ -768,6 +772,14 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
         }
         return null
       })}
+
+      {lightboxImage && (
+        <PortraitLightbox
+          imageUrl={lightboxImage.url}
+          personName={lightboxImage.personName}
+          onClose={() => setLightboxImage(null)}
+        />
+      )}
     </div>
   )
 }
