@@ -1324,21 +1324,40 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                       disabled={submitting || success}
                     />
                     {portraitDragActive ? (
-                      <p className="text-lg text-blue-700 font-medium mb-4">Drop image here</p>
+                      <p className="text-lg text-blue-700 font-medium mb-4">Drop headshot here</p>
                     ) : (
                       <>
+                        <div className="flex justify-center mb-4">
+                          <svg
+                            className="w-24 h-24 text-gray-300"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                          </svg>
+                        </div>
                         <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={submitting || success}
                           className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Select Image
+                          Select Headshot
                         </button>
-                        <p className="text-sm text-gray-500 mt-2">
-                          JPEG, PNG, WebP, or HEIC format
+                        <p className="text-sm text-gray-500 mt-3">
+                          Upload a headshot photo of just this person
                         </p>
-                        <p className="text-sm text-gray-400 mt-1">
-                          or drag and drop an image here
+                        <p className="text-xs text-gray-400 mt-1">
+                          For group photos, use the Photos tab
+                        </p>
+                        <p className="text-xs text-gray-400 mt-2">
+                          JPEG, PNG, WebP, or HEIC format • or drag and drop here
                         </p>
                       </>
                     )}
