@@ -1025,9 +1025,9 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
   const tabs = [
     { id: 'portrait', label: 'Portrait' },
-    { id: 'correction', label: 'Correction' },
-    { id: 'memory', label: 'Memory' },
     { id: 'photos', label: 'Photos' },
+    { id: 'memory', label: 'Memory' },
+    { id: 'correction', label: 'Correction' },
   ] as const
 
   return (
