@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { usePendingPortraits } from '../../hooks/usePendingPortraits'
@@ -32,10 +32,64 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
   const [deleteConfirmText, setDeleteConfirmText] = useState<Record<string, string>>({})
   const [deleteTimeoutId, setDeleteTimeoutId] = useState<Record<string, NodeJS.Timeout>>({})
   const [lightboxImage, setLightboxImage] = useState<{ url: string; personName: string } | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
+  const [sortOption, setSortOption] = useState<'approved-desc' | 'approved-asc' | 'name-asc' | 'name-desc'>('approved-desc')
 
   const loading = viewMode === 'pending' ? pendingLoading : approvedLoading
   const error = viewMode === 'pending' ? pendingError : approvedError
   const { people: personSearchResults, loading: personSearchLoading } = usePeopleSearch(editPersonSearchTerm)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const filteredAndSortedPortraits = useMemo(() => {
+    let result = [...approvedPortraits]
+
+    if (debouncedSearchQuery) {
+      result = result.filter((portrait) => {
+        const personName = (portrait.person.display_name || portrait.person.full_name || '').toLowerCase()
+        return personName.includes(debouncedSearchQuery.toLowerCase())
+      })
+    }
+
+    switch (sortOption) {
+      case 'approved-desc':
+        result.sort((a, b) => {
+          const dateA = a.portrait_approved_at ? new Date(a.portrait_approved_at).getTime() : 0
+          const dateB = b.portrait_approved_at ? new Date(b.portrait_approved_at).getTime() : 0
+          return dateB - dateA
+        })
+        break
+      case 'approved-asc':
+        result.sort((a, b) => {
+          const dateA = a.portrait_approved_at ? new Date(a.portrait_approved_at).getTime() : 0
+          const dateB = b.portrait_approved_at ? new Date(b.portrait_approved_at).getTime() : 0
+          return dateA - dateB
+        })
+        break
+      case 'name-asc':
+        result.sort((a, b) => {
+          const nameA = (a.person.display_name || a.person.full_name || '').toLowerCase()
+          const nameB = (b.person.display_name || b.person.full_name || '').toLowerCase()
+          return nameA.localeCompare(nameB)
+        })
+        break
+      case 'name-desc':
+        result.sort((a, b) => {
+          const nameA = (a.person.display_name || a.person.full_name || '').toLowerCase()
+          const nameB = (b.person.display_name || b.person.full_name || '').toLowerCase()
+          return nameB.localeCompare(nameA)
+        })
+        break
+    }
+
+    return result
+  }, [approvedPortraits, debouncedSearchQuery, sortOption])
 
   const refetch = () => {
     if (viewMode === 'pending') {
@@ -596,8 +650,51 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
           {approvedPortraits.length === 0 ? (
             <div className="text-center py-8 text-gray-600">No approved portraits</div>
           ) : (
-            <div className="grid gap-4">
-              {approvedPortraits.map((portrait) => {
+            <>
+              <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="flex-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search by name..."
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="sort-select" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                      Sort:
+                    </label>
+                    <select
+                      id="sort-select"
+                      value={sortOption}
+                      onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                    >
+                      <option value="approved-desc">Approved Date (Newest)</option>
+                      <option value="approved-asc">Approved Date (Oldest)</option>
+                      <option value="name-asc">Name (A-Z)</option>
+                      <option value="name-desc">Name (Z-A)</option>
+                    </select>
+                  </div>
+                </div>
+                {debouncedSearchQuery && (
+                  <div className="mt-3 text-sm text-gray-600">
+                    Showing {filteredAndSortedPortraits.length} of {approvedPortraits.length} portraits
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-4">
+                {filteredAndSortedPortraits.length === 0 ? (
+                  <div className="text-center py-8 text-gray-600">No portraits match your search</div>
+                ) : (
+                  filteredAndSortedPortraits.map((portrait) => {
                 const isEditing = editingPortrait === portrait.person.id
                 const personName = portrait.person.display_name || portrait.person.full_name
 
@@ -815,8 +912,10 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                     </div>
                   </div>
                 )
-              })}
-            </div>
+                  })
+                )}
+              </div>
+            </>
           )}
         </>
       )}
