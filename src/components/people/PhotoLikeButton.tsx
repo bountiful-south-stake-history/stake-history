@@ -52,12 +52,18 @@ export function PhotoLikeButton({
     <div className="flex items-center gap-1 relative">
       <button
         onClick={handleClick}
-        disabled={disabled || isToggling}
+        disabled={disabled}
         className={`flex items-center gap-1 transition-colors ${
           likedByUser
             ? 'text-red-500 hover:text-red-600'
             : 'text-gray-400 hover:text-red-400'
-        } ${disabled || isToggling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        } ${
+          disabled
+            ? 'opacity-50 cursor-not-allowed'
+            : isToggling
+            ? 'opacity-50 cursor-pointer'
+            : 'cursor-pointer'
+        }`}
         aria-label={likedByUser ? 'Unlike this photo' : 'Like this photo'}
       >
         <svg
