@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { PhotoLikeButton } from './PhotoLikeButton'
 
 interface TaggedPerson {
   id: string
@@ -21,9 +22,20 @@ interface Photo {
 interface PhotoLightboxProps {
   photo: Photo
   onClose: () => void
+  likeCount?: number
+  likedByUser?: boolean
+  likedByNames?: string[]
+  onToggleLike?: () => Promise<void>
 }
 
-export function PhotoLightbox({ photo, onClose }: PhotoLightboxProps) {
+export function PhotoLightbox({
+  photo,
+  onClose,
+  likeCount = 0,
+  likedByUser = false,
+  likedByNames = [],
+  onToggleLike,
+}: PhotoLightboxProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -122,6 +134,17 @@ export function PhotoLightbox({ photo, onClose }: PhotoLightboxProps) {
                 </p>
               )}
             </div>
+            {onToggleLike && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <PhotoLikeButton
+                  photoId={photo.id}
+                  likeCount={likeCount}
+                  likedByUser={likedByUser}
+                  likedByNames={likedByNames}
+                  onToggleLike={onToggleLike}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

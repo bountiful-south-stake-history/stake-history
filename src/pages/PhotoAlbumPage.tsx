@@ -2,9 +2,11 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useUserProfile } from '../hooks/useUserProfile'
+import { usePhotoLikes } from '../hooks/usePhotoLikes'
 import { supabase } from '../lib/supabase'
 import { AuthModal } from '../components/auth/AuthModal'
 import { PhotoLightbox } from '../components/people/PhotoLightbox'
+import { PhotoLikeButton } from '../components/people/PhotoLikeButton'
 
 interface TaggedPerson {
   id: string
@@ -27,6 +29,7 @@ interface Photo {
 export function PhotoAlbumPage() {
   const { user, loading: authLoading } = useAuth()
   const { profile: userProfile, loading: profileLoading } = useUserProfile()
+  const { likesMap, fetchLikesForPhotos, likePhoto, unlikePhoto } = usePhotoLikes()
   const [photos, setPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -119,6 +122,12 @@ export function PhotoAlbumPage() {
         )
 
         setPhotos(photosWithPeople)
+
+        // Fetch likes for all photos
+        if (photosWithPeople.length > 0) {
+          const photoIds = photosWithPeople.map((p) => p.id)
+          await fetchLikesForPhotos(photoIds)
+        }
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to fetch photos'))
       } finally {
@@ -129,7 +138,7 @@ export function PhotoAlbumPage() {
     if (!authLoading && !profileLoading) {
       fetchPhotos()
     }
-  }, [user, userProfile, authLoading, profileLoading])
+  }, [user, userProfile, authLoading, profileLoading, fetchLikesForPhotos])
 
   const filteredAndSortedPhotos = useMemo(() => {
     let result = [...photos]
@@ -320,11 +329,30 @@ export function PhotoAlbumPage() {
                     </div>
                   </div>
                 )}
-                {photo.submitter_name && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Shared by: {photo.submitter_name}
-                  </p>
-                )}
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                  {photo.submitter_name && (
+                    <p className="text-xs text-gray-500">
+                      Shared by: {photo.submitter_name}
+                    </p>
+                  )}
+                  <PhotoLikeButton
+                    photoId={photo.id}
+                    likeCount={likesMap.get(photo.id)?.likeCount || 0}
+                    likedByUser={likesMap.get(photo.id)?.likedByUser || false}
+                    likedByNames={likesMap.get(photo.id)?.likedByNames || []}
+                    onToggleLike={async () => {
+                      const likeData = likesMap.get(photo.id)
+                      if (likeData?.likedByUser) {
+                        await unlikePhoto(photo.id)
+                      } else {
+                        await likePhoto(photo.id)
+                      }
+                      // Refetch likes to get updated names
+                      await fetchLikesForPhotos([photo.id])
+                    }}
+                    disabled={!user}
+                  />
+                </div>
               </div>
             </div>
           ))}
@@ -335,6 +363,19 @@ export function PhotoAlbumPage() {
         <PhotoLightbox
           photo={selectedPhoto}
           onClose={() => setSelectedPhoto(null)}
+          likeCount={likesMap.get(selectedPhoto.id)?.likeCount || 0}
+          likedByUser={likesMap.get(selectedPhoto.id)?.likedByUser || false}
+          likedByNames={likesMap.get(selectedPhoto.id)?.likedByNames || []}
+          onToggleLike={async () => {
+            const likeData = likesMap.get(selectedPhoto.id)
+            if (likeData?.likedByUser) {
+              await unlikePhoto(selectedPhoto.id)
+            } else {
+              await likePhoto(selectedPhoto.id)
+            }
+            // Refetch likes to get updated names
+            await fetchLikesForPhotos([selectedPhoto.id])
+          }}
         />
       )}
     </div>
