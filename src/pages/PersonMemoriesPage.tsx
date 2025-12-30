@@ -1,5 +1,5 @@
-import { useParams, Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { usePerson } from '../hooks/usePerson'
 import { usePersonCallings } from '../hooks/usePersonCallings'
 import { usePersonMemories } from '../hooks/usePersonMemories'
@@ -31,6 +31,15 @@ export function PersonMemoriesPage() {
   const { photos, loading: photosLoading } = usePersonPhotos(id || '')
   const [showContributeModal, setShowContributeModal] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('openMemory') === 'true' && person && !showContributeModal) {
+      setShowContributeModal(true)
+      // Clean up URL
+      navigate(`/person/${id}`, { replace: true })
+    }
+  }, [searchParams, person, showContributeModal, id, navigate])
 
   const loading = personLoading || callingsLoading || memoriesLoading || photosLoading
   const hasContent = memories.length > 0 || photos.length > 0 || (person?.portrait_url && !person?.portrait_pending)
@@ -361,7 +370,7 @@ export function PersonMemoriesPage() {
             window.location.reload()
           }}
           onCancel={() => setShowContributeModal(false)}
-          initialType={!person.portrait_url && !person.portrait_pending ? 'portrait' : undefined}
+          initialType={searchParams.get('openMemory') === 'true' ? 'memory' : (!person.portrait_url && !person.portrait_pending ? 'portrait' : undefined)}
           onOpenSignIn={() => {
             setShowContributeModal(false)
             setShowAuthModal(true)

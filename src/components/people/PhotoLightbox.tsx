@@ -26,6 +26,7 @@ interface PhotoLightboxProps {
   likedByUser?: boolean
   likedByNames?: string[]
   onToggleLike?: () => Promise<void>
+  onShareMemory?: () => void
 }
 
 export function PhotoLightbox({
@@ -35,6 +36,7 @@ export function PhotoLightbox({
   likedByUser = false,
   likedByNames = [],
   onToggleLike,
+  onShareMemory,
 }: PhotoLightboxProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -134,8 +136,8 @@ export function PhotoLightbox({
                 </p>
               )}
             </div>
-            {onToggleLike && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
+              {onToggleLike && (
                 <PhotoLikeButton
                   photoId={photo.id}
                   likeCount={likeCount}
@@ -143,8 +145,44 @@ export function PhotoLightbox({
                   likedByNames={likedByNames}
                   onToggleLike={onToggleLike}
                 />
+              )}
+              <div className="flex items-center gap-4">
+                {onShareMemory && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onShareMemory()
+                    }}
+                    className="text-primary-600 hover:text-primary-800 underline text-sm"
+                  >
+                    Share Memory
+                  </button>
+                )}
+                <Link
+                  to={`/photo/${photo.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onClose()
+                  }}
+                  className="text-primary-600 hover:text-primary-800 underline text-sm flex items-center gap-1"
+                >
+                  View Details
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Link>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

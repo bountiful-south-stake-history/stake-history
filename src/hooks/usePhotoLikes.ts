@@ -93,7 +93,14 @@ export function usePhotoLikes() {
         })
       })
 
-      setLikesMap(likesByPhoto)
+      // Merge with existing state instead of replacing
+      setLikesMap((prev) => {
+        const merged = new Map(prev)
+        likesByPhoto.forEach((value, key) => {
+          merged.set(key, value)
+        })
+        return merged
+      })
       return likesByPhoto
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch likes')
@@ -140,8 +147,58 @@ export function usePhotoLikes() {
 
       if (error) throw error
 
-      // Refetch likes to get updated names
-      await fetchLikesForPhotos([photoId])
+      // Fetch updated like data for this photo only and merge with existing state
+      const { data: likesData } = await supabase
+        .from('photo_likes')
+        .select('photo_id, user_id, created_at')
+        .eq('photo_id', photoId)
+        .order('created_at', { ascending: false })
+
+      if (likesData) {
+        const userIds = [...new Set(likesData.map((like) => like.user_id))]
+        let profilesMap = new Map<string, { display_name?: string; email?: string }>()
+        
+        if (userIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('user_profiles')
+            .select('id, display_name, email')
+            .in('id', userIds)
+
+          if (profilesData) {
+            profilesData.forEach((profile) => {
+              profilesMap.set(profile.id, {
+                display_name: profile.display_name || undefined,
+                email: profile.email || undefined,
+              })
+            })
+          }
+        }
+
+        const likedByNames = likesData
+          .map((like) => {
+            const profile = profilesMap.get(like.user_id)
+            if (profile?.display_name) {
+              return profile.display_name
+            }
+            if (profile?.email) {
+              return profile.email.split('@')[0]
+            }
+            return null
+          })
+          .filter(Boolean) as string[]
+
+        // Update only this photo's data in the map
+        setLikesMap((prev) => {
+          const newMap = new Map(prev)
+          newMap.set(photoId, {
+            photoId,
+            likeCount: likesData.length,
+            likedByUser: true,
+            likedByNames,
+          })
+          return newMap
+        })
+      }
     } catch (err) {
       // Revert optimistic update on error
       if (previousState) {
@@ -197,8 +254,58 @@ export function usePhotoLikes() {
 
       if (error) throw error
 
-      // Refetch likes to get updated names
-      await fetchLikesForPhotos([photoId])
+      // Fetch updated like data for this photo only and merge with existing state
+      const { data: likesData } = await supabase
+        .from('photo_likes')
+        .select('photo_id, user_id, created_at')
+        .eq('photo_id', photoId)
+        .order('created_at', { ascending: false })
+
+      if (likesData) {
+        const userIds = [...new Set(likesData.map((like) => like.user_id))]
+        let profilesMap = new Map<string, { display_name?: string; email?: string }>()
+        
+        if (userIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('user_profiles')
+            .select('id, display_name, email')
+            .in('id', userIds)
+
+          if (profilesData) {
+            profilesData.forEach((profile) => {
+              profilesMap.set(profile.id, {
+                display_name: profile.display_name || undefined,
+                email: profile.email || undefined,
+              })
+            })
+          }
+        }
+
+        const likedByNames = likesData
+          .map((like) => {
+            const profile = profilesMap.get(like.user_id)
+            if (profile?.display_name) {
+              return profile.display_name
+            }
+            if (profile?.email) {
+              return profile.email.split('@')[0]
+            }
+            return null
+          })
+          .filter(Boolean) as string[]
+
+        // Update only this photo's data in the map
+        setLikesMap((prev) => {
+          const newMap = new Map(prev)
+          newMap.set(photoId, {
+            photoId,
+            likeCount: likesData.length,
+            likedByUser: false,
+            likedByNames,
+          })
+          return newMap
+        })
+      }
     } catch (err) {
       // Revert optimistic update on error
       if (previousState) {

@@ -7,6 +7,7 @@ import { SearchPage } from './pages/SearchPage'
 import { AboutPage } from './pages/AboutPage'
 import { AdminPage } from './pages/AdminPage'
 import { PhotoAlbumPage } from './pages/PhotoAlbumPage'
+import { PhotoDetailPage } from './pages/PhotoDetailPage'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/org/:id" element={<OrganizationPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/photos" element={<PhotoAlbumPage />} />
+          <Route path="/photo/:photoId" element={<PhotoDetailPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>

@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { AuthModal } from '../components/auth/AuthModal'
 import { PhotoLightbox } from '../components/people/PhotoLightbox'
 import { PhotoLikeButton } from '../components/people/PhotoLikeButton'
+import { ShareMemoryModal } from '../components/people/ShareMemoryModal'
 
 interface TaggedPerson {
   id: string
@@ -38,6 +39,7 @@ export function PhotoAlbumPage() {
   const [sortOption, setSortOption] = useState<'newest' | 'oldest' | 'caption'>('newest')
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [shareMemoryPhoto, setShareMemoryPhoto] = useState<Photo | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -335,23 +337,34 @@ export function PhotoAlbumPage() {
                       Shared by: {photo.submitter_name}
                     </p>
                   )}
-                  <PhotoLikeButton
-                    photoId={photo.id}
-                    likeCount={likesMap.get(photo.id)?.likeCount || 0}
-                    likedByUser={likesMap.get(photo.id)?.likedByUser || false}
-                    likedByNames={likesMap.get(photo.id)?.likedByNames || []}
-                    onToggleLike={async () => {
-                      const likeData = likesMap.get(photo.id)
-                      if (likeData?.likedByUser) {
-                        await unlikePhoto(photo.id)
-                      } else {
-                        await likePhoto(photo.id)
-                      }
-                      // Refetch likes to get updated names
-                      await fetchLikesForPhotos([photo.id])
-                    }}
-                    disabled={!user}
-                  />
+                  <div className="flex items-center gap-3">
+                    <PhotoLikeButton
+                      photoId={photo.id}
+                      likeCount={likesMap.get(photo.id)?.likeCount || 0}
+                      likedByUser={likesMap.get(photo.id)?.likedByUser || false}
+                      likedByNames={likesMap.get(photo.id)?.likedByNames || []}
+                      onToggleLike={async () => {
+                        const likeData = likesMap.get(photo.id)
+                        if (likeData?.likedByUser) {
+                          await unlikePhoto(photo.id)
+                        } else {
+                          await likePhoto(photo.id)
+                        }
+                        // Refetch likes to get updated names
+                        await fetchLikesForPhotos([photo.id])
+                      }}
+                      disabled={!user}
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShareMemoryPhoto(photo)
+                      }}
+                      className="text-xs text-primary-600 hover:text-primary-800 underline"
+                    >
+                      Share Memory
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -376,6 +389,14 @@ export function PhotoAlbumPage() {
             // Refetch likes to get updated names
             await fetchLikesForPhotos([selectedPhoto.id])
           }}
+          onShareMemory={() => setShareMemoryPhoto(selectedPhoto)}
+        />
+      )}
+
+      {shareMemoryPhoto && (
+        <ShareMemoryModal
+          taggedPeople={shareMemoryPhoto.taggedPeople}
+          onClose={() => setShareMemoryPhoto(null)}
         />
       )}
     </div>
