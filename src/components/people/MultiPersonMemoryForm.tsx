@@ -24,6 +24,19 @@ const relationshipOptions = [
 
 const MAX_MEMORY_LENGTH = 5000
 
+const formatNamesForHeader = (people: TaggedPerson[]): string => {
+  const names = people.map((p) => p.display_name || p.full_name)
+  if (names.length === 1) {
+    return `${names[0]}'s page`
+  } else if (names.length === 2) {
+    return `${names[0]}'s and ${names[1]}'s pages`
+  } else {
+    const allButLast = names.slice(0, -1).map((n) => `${n}'s`).join(', ')
+    const last = names[names.length - 1]
+    return `${allButLast}, and ${last}'s pages`
+  }
+}
+
 export function MultiPersonMemoryForm({ taggedPeople, onSuccess, onCancel }: MultiPersonMemoryFormProps) {
   const { user } = useAuth()
   const [relationship, setRelationship] = useState('')
@@ -141,8 +154,8 @@ export function MultiPersonMemoryForm({ taggedPeople, onSuccess, onCancel }: Mul
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
           Share a Memory About This Photo
         </h3>
- <p className="text-sm text-gray-600 mb-4">
-          This memory will be shared for all {taggedPeople.length} people tagged in this photo.
+        <p className="text-sm text-gray-600 mb-4">
+          This memory will be shared on {formatNamesForHeader(taggedPeople)}.
         </p>
       </div>
 
