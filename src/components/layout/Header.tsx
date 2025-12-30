@@ -26,6 +26,9 @@ export function Header() {
             <Link to="/" className="hover:text-accent-100 transition-colors">
               Home
             </Link>
+            <Link to="/photos" className="hover:text-accent-100 transition-colors">
+              Photo Album
+            </Link>
             <Link to="/about" className="hover:text-accent-100 transition-colors">
               About
             </Link>
@@ -89,6 +92,13 @@ export function Header() {
                 className="hover:text-accent-100 transition-colors"
               >
                 Home
+              </Link>
+              <Link
+                to="/photos"
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-accent-100 transition-colors"
+              >
+                Photo Album
               </Link>
               <Link
                 to="/about"

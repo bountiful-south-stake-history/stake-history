@@ -6,6 +6,7 @@ import { OrganizationPage } from './pages/OrganizationPage'
 import { SearchPage } from './pages/SearchPage'
 import { AboutPage } from './pages/AboutPage'
 import { AdminPage } from './pages/AdminPage'
+import { PhotoAlbumPage } from './pages/PhotoAlbumPage'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/person/:id" element={<PersonMemoriesPage />} />
           <Route path="/org/:id" element={<OrganizationPage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/photos" element={<PhotoAlbumPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
