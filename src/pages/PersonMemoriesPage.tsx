@@ -10,6 +10,7 @@ import { PersonPageAvatar } from '../components/people/PersonPageAvatar'
 import { ContributionModal } from '../components/people/ContributionModal'
 import { AuthModal } from '../components/auth/AuthModal'
 import { ContributionNudge } from '../components/ui/ContributionNudge'
+import { WatchButton } from '../components/people/WatchButton'
 import { formatCallingRange, parseLocalDate } from '../lib/utils'
 
 const relationshipLabels: Record<string, string> = {
@@ -66,25 +67,33 @@ export function PersonMemoriesPage() {
   return (
     <div>
       <div className="mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-primary-700 transition-colors mb-4"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-gray-600 hover:text-primary-700 transition-colors"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            <span>Back</span>
+          </button>
+          {user && person && (
+            <WatchButton
+              personId={person.id}
+              personName={person.display_name || person.full_name}
             />
-          </svg>
-          <span>Back</span>
-        </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-8">

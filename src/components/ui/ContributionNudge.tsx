@@ -86,7 +86,6 @@ export function ContributionNudge({ words, interval = 3600, className = '' }: Co
       }}
     >
       <div className="inline-flex items-center justify-start gap-1.5">
-        <span className="text-[13px] text-primary-600 whitespace-nowrap">Help add:</span>
         <span className="relative inline-block">
           <span className="text-[13px] font-semibold text-red-800 opacity-0 pointer-events-none" aria-hidden="true">
             {longestWord}

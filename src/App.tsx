@@ -8,6 +8,7 @@ import { AboutPage } from './pages/AboutPage'
 import { AdminPage } from './pages/AdminPage'
 import { PhotoAlbumPage } from './pages/PhotoAlbumPage'
 import { PhotoDetailPage } from './pages/PhotoDetailPage'
+import { MyWatchlistPage } from './pages/MyWatchlistPage'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/photos" element={<PhotoAlbumPage />} />
           <Route path="/photo/:photoId" element={<PhotoDetailPage />} />
+          <Route path="/my-watchlist" element={<MyWatchlistPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>

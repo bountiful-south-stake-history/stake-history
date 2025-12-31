@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { WatchPromptModal } from './WatchPromptModal'
 
 interface AuthModalProps {
   onClose: () => void
@@ -17,6 +18,7 @@ export function AuthModal({ onClose, onSuccess }: AuthModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [showWatchPrompt, setShowWatchPrompt] = useState(false)
 
   const validateEmail = (email: string): boolean => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -149,6 +151,14 @@ export function AuthModal({ onClose, onSuccess }: AuthModalProps) {
         }
 
         setMessage('Account created! Please check your email to verify your account.')
+        
+        const hasSeenPrompt = localStorage.getItem('hasSeenWatchPrompt')
+        if (!hasSeenPrompt) {
+          setTimeout(() => {
+            setShowWatchPrompt(true)
+          }, 2000)
+        }
+        
         setTimeout(() => {
           setIsSignUp(false)
           setFullName('')
@@ -420,6 +430,15 @@ export function AuthModal({ onClose, onSuccess }: AuthModalProps) {
           </div>
         </div>
       </div>
+      
+      {showWatchPrompt && (
+        <WatchPromptModal
+          onClose={() => {
+            setShowWatchPrompt(false)
+            onSuccess()
+          }}
+        />
+      )}
     </div>
   )
 }

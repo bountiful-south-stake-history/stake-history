@@ -116,6 +116,15 @@ export function Header() {
                   Admin
                 </Link>
               )}
+              {!loading && user && (
+                <Link
+                  to="/my-watchlist"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="hover:text-accent-100 transition-colors"
+                >
+                  My Watchlist
+                </Link>
+              )}
               {!loading && (
                 <>
                   {user ? (

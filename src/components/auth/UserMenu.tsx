@@ -84,6 +84,16 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
               Admin
             </Link>
           )}
+          <Link
+            to="/my-watchlist"
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowDropdown(false)
+            }}
+            className="block px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            My Watchlist
+          </Link>
           <button
             onClick={(e) => {
               e.stopPropagation()
