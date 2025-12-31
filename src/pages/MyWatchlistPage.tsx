@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth'
 import { usePersonCallings } from '../hooks/usePersonCallings'
 import { WatchButton } from '../components/people/WatchButton'
 import { AuthModal } from '../components/auth/AuthModal'
+import { useWatchActivity } from '../hooks/useWatchActivity'
+import { ActivityCard } from '../components/watchlist/ActivityCard'
 import { formatCallingRange } from '../lib/utils'
 import { supabase } from '../lib/supabase'
 import type { Person } from '../lib/types'
@@ -12,6 +14,7 @@ import type { Person } from '../lib/types'
 export function MyWatchlistPage() {
   const { user, loading: authLoading } = useAuth()
   const { watchedPeople, isLoading, refetch } = useWatchedPeople()
+  const { activities, isLoading: activitiesLoading, hasMore, loadMore } = useWatchActivity(10)
   const navigate = useNavigate()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [emailDigestEnabled, setEmailDigestEnabled] = useState(true)
@@ -111,7 +114,7 @@ export function MyWatchlistPage() {
       </h1>
 
       {watchedPeople.length === 0 ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center mb-8">
           <div className="mb-4">
             <svg
               className="w-16 h-16 text-gray-400 mx-auto"
@@ -141,60 +144,89 @@ export function MyWatchlistPage() {
           </Link>
         </div>
       ) : (
-        <>
-          <div className="space-y-4 mb-8">
-            {watchedPeople.map((person) => (
-              <PersonWatchCard key={person.id} person={person} onUnwatch={refetch} />
-            ))}
+        <div className="space-y-4 mb-8">
+          {watchedPeople.map((person) => (
+            <PersonWatchCard key={person.id} person={person} onUnwatch={refetch} />
+          ))}
+        </div>
+      )}
+
+      <div className="border-t border-gray-200 pt-8 mb-8">
+        <h2 className="text-xl font-bold text-primary-700 mb-4">Recent Activity</h2>
+        {activitiesLoading ? (
+          <div className="text-center py-8">
+            <div className="text-gray-600">Loading activity...</div>
           </div>
+        ) : activities.length === 0 ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+            <p className="text-gray-600">
+              No recent activity for the people you're watching.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-3 mb-4">
+              {activities.map((activity) => (
+                <ActivityCard key={activity.id} activity={activity} />
+              ))}
+            </div>
+            {hasMore && (
+              <button
+                onClick={loadMore}
+                className="w-full py-2 px-4 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Load more...
+              </button>
+            )}
+          </>
+        )}
+      </div>
 
-          <div className="border-t border-gray-200 pt-6">
-            <h2 className="text-xl font-bold text-primary-700 mb-4">Email Preferences</h2>
-            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={emailDigestEnabled}
-                  onChange={async (e) => {
-                    const newValue = e.target.checked
-                    setEmailDigestEnabled(newValue)
-                    
-                    if (user) {
-                      try {
-                        const { error } = await supabase
-                          .from('user_profiles')
-                          .update({ weekly_digest_enabled: newValue })
-                          .eq('id', user.id)
+      <div className="border-t border-gray-200 pt-6">
+        <h2 className="text-xl font-bold text-primary-700 mb-4">Email Preferences</h2>
+        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={emailDigestEnabled}
+              onChange={async (e) => {
+                const newValue = e.target.checked
+                setEmailDigestEnabled(newValue)
+                
+                if (user) {
+                  try {
+                    const { error } = await supabase
+                      .from('user_profiles')
+                      .update({ weekly_digest_enabled: newValue })
+                      .eq('id', user.id)
 
-                        if (error) {
-                          if (error.code === '42703') {
-                            console.warn('weekly_digest_enabled column does not exist yet')
-                          } else {
-                            throw error
-                          }
-                        }
-                      } catch (err) {
-                        console.error('Failed to update email preference:', err)
-                        setEmailDigestEnabled(!newValue)
+                    if (error) {
+                      if (error.code === '42703') {
+                        console.warn('weekly_digest_enabled column does not exist yet')
+                      } else {
+                        throw error
                       }
                     }
-                  }}
-                  disabled={loadingEmailPref}
-                  className="mt-1 w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 disabled:opacity-50"
-                />
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-900 mb-1">
-                    Send me weekly digest emails about my watchlist
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    You'll receive updates about new photos and memories for the people you're watching.
-                  </p>
-                </div>
-              </label>
+                  } catch (err) {
+                    console.error('Failed to update email preference:', err)
+                    setEmailDigestEnabled(!newValue)
+                  }
+                }
+              }}
+              disabled={loadingEmailPref}
+              className="mt-1 w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 disabled:opacity-50"
+            />
+            <div className="flex-1">
+              <div className="font-semibold text-gray-900 mb-1">
+                Send me weekly digest emails about my watchlist
+              </div>
+              <p className="text-sm text-gray-600">
+                You'll receive updates about new photos and memories for the people you're watching.
+              </p>
             </div>
-          </div>
-        </>
-      )}
+          </label>
+        </div>
+      </div>
     </div>
   )
 }

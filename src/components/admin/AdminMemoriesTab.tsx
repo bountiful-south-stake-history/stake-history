@@ -56,6 +56,9 @@ export function AdminMemoriesTab({ onActionComplete }: AdminMemoriesTabProps) {
   const handleApprove = async (memoryId: string) => {
     setProcessing(memoryId)
     try {
+      const memory = memories.find((m) => m.id === memoryId)
+      if (!memory) throw new Error('Memory not found')
+
       const { error: updateError } = await supabase
         .from('memories')
         .update({
@@ -65,6 +68,27 @@ export function AdminMemoriesTab({ onActionComplete }: AdminMemoriesTabProps) {
         .eq('id', memoryId)
 
       if (updateError) throw updateError
+
+      if (memory.person_id) {
+        const memoryTitle = memory.content
+          ? (memory.content.length > 50 ? memory.content.substring(0, 50) + '...' : memory.content)
+          : 'New memory'
+
+        const { error: activityError } = await supabase
+          .from('follow_activity')
+          .insert({
+            person_id: memory.person_id,
+            activity_type: 'memory',
+            photo_id: null,
+            memory_id: memoryId,
+            title: memoryTitle,
+          })
+
+        if (activityError) {
+          console.error('Failed to create activity record:', activityError)
+        }
+      }
+
       setEditingId(null)
       refetch()
       onActionComplete?.()

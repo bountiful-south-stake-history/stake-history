@@ -214,6 +214,9 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
   const handleApprove = async (photoId: string) => {
     setProcessing(photoId)
     try {
+      const photo = photos.find((p) => p.id === photoId)
+      if (!photo) throw new Error('Photo not found')
+
       const { error: updateError } = await supabase
         .from('photos')
         .update({
@@ -223,6 +226,33 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
         .eq('id', photoId)
 
       if (updateError) throw updateError
+
+      const { data: taggedPeopleData, error: taggedError } = await supabase
+        .from('photo_people')
+        .select('person_id')
+        .eq('photo_id', photoId)
+
+      if (taggedError) {
+        console.error('Failed to fetch tagged people:', taggedError)
+      } else if (taggedPeopleData && taggedPeopleData.length > 0) {
+        const photoTitle = photo.caption || 'New photo'
+        const activityRecords = taggedPeopleData.map((item) => ({
+          person_id: item.person_id,
+          activity_type: 'photo_tag' as const,
+          photo_id: photoId,
+          memory_id: null,
+          title: photoTitle,
+        }))
+
+        const { error: activityError } = await supabase
+          .from('follow_activity')
+          .insert(activityRecords)
+
+        if (activityError) {
+          console.error('Failed to create activity records:', activityError)
+        }
+      }
+
       refetch()
       onActionComplete?.()
     } catch (err) {
