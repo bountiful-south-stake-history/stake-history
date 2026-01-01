@@ -57,8 +57,40 @@
     animation: float-subtle 2s ease-in-out infinite;
   }
 
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slideUp {
+    animation: slideUp 0.3s ease-out;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .guidance-arrow {
+      animation: none !important;
+    }
+    .animate-fadeIn,
+    .animate-slideUp {
       animation: none !important;
     }
   }

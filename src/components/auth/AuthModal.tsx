@@ -5,10 +5,11 @@ import { WatchPromptModal } from './WatchPromptModal'
 interface AuthModalProps {
   onClose: () => void
   onSuccess: () => void
+  initialMode?: 'signin' | 'signup'
 }
 
-export function AuthModal({ onClose, onSuccess }: AuthModalProps) {
-  const [isSignUp, setIsSignUp] = useState(false)
+export function AuthModal({ onClose, onSuccess, initialMode = 'signin' }: AuthModalProps) {
+  const [isSignUp, setIsSignUp] = useState(initialMode === 'signup')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

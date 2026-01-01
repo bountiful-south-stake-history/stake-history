@@ -9,8 +9,12 @@ import { AdminPage } from './pages/AdminPage'
 import { PhotoAlbumPage } from './pages/PhotoAlbumPage'
 import { PhotoDetailPage } from './pages/PhotoDetailPage'
 import { MyWatchlistPage } from './pages/MyWatchlistPage'
+import { FeatureAnnouncementModal } from './components/announcements/FeatureAnnouncementModal'
+import { useFeatureAnnouncements } from './hooks/useFeatureAnnouncements'
 
 function App() {
+  const { showWatchFeature, dismissWatchFeature, isChecking } = useFeatureAnnouncements()
+
   return (
     <BrowserRouter>
       <Layout>
@@ -25,6 +29,9 @@ function App() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
+        {!isChecking && showWatchFeature && (
+          <FeatureAnnouncementModal onClose={dismissWatchFeature} />
+        )}
       </Layout>
     </BrowserRouter>
   )

@@ -11,6 +11,7 @@ import { ContributionModal } from '../components/people/ContributionModal'
 import { AuthModal } from '../components/auth/AuthModal'
 import { ContributionNudge } from '../components/ui/ContributionNudge'
 import { WatchButton } from '../components/people/WatchButton'
+import { WatchPromoBanner } from '../components/people/WatchPromoBanner'
 import { formatCallingRange, parseLocalDate } from '../lib/utils'
 
 const relationshipLabels: Record<string, string> = {
@@ -95,6 +96,12 @@ export function PersonMemoriesPage() {
           )}
         </div>
       </div>
+
+      {!user && !authLoading && person && (
+        <WatchPromoBanner
+          onSignUp={() => setShowAuthModal(true)}
+        />
+      )}
 
       <div className="mb-8">
         <div className="flex items-start gap-6 mb-6">
@@ -394,6 +401,7 @@ export function PersonMemoriesPage() {
             setShowAuthModal(false)
             window.location.reload()
           }}
+          initialMode="signup"
         />
       )}
     </div>
