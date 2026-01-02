@@ -103,10 +103,10 @@ export function ArchivesPage() {
                     href={doc.url.startsWith('/*') ? '#' : doc.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 hover:underline"
+                    className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:underline font-medium"
                   >
                     <svg
-                      className="w-4 h-4"
+                      className="w-5 h-5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -120,7 +120,7 @@ export function ArchivesPage() {
                     </svg>
                     <span>{doc.title}</span>
                     {!doc.url.startsWith('/*') && (
-                      <span className="text-xs text-gray-500">[Download PDF]</span>
+                      <span className="text-xs text-purple-500">[Download PDF]</span>
                     )}
                   </a>
                 ))}
