@@ -78,6 +78,7 @@ export const dedicationSpeakers: DedicationSpeaker[] = [
     role: 'Remarks',
     personId: null,
     audioUrl: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/audio/12-Regional_Representative_Antone_K_Romney_remarks.mp3',
+    imageUrl: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/antone-k-romney.jpg',
     subtitle: 'Regional Representative',
   },
   {

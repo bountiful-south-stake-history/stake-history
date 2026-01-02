@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePerson } from '../../hooks/usePerson'
 import { AudioPlayer } from './AudioPlayer'
+import { ImageLightbox } from './ImageLightbox'
 
 interface SpeakerCardProps {
   name: string
@@ -20,6 +22,7 @@ export function SpeakerCard({
   subtitle,
 }: SpeakerCardProps) {
   const { person } = usePerson(personId || '')
+  const [showLightbox, setShowLightbox] = useState(false)
 
   let displayImage: string | null | undefined = null
   if (personId && person) {
@@ -40,11 +43,21 @@ export function SpeakerCard({
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex items-start gap-3 flex-shrink-0">
           {displayImage ? (
-            <img
-              src={displayImage}
-              alt={name}
-              className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
-            />
+            <>
+              <img
+                src={displayImage}
+                alt={name}
+                className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setShowLightbox(true)}
+              />
+              {showLightbox && (
+                <ImageLightbox
+                  imageUrl={displayImage}
+                  alt={name}
+                  onClose={() => setShowLightbox(false)}
+                />
+              )}
+            </>
           ) : (
             <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-300">
               <svg

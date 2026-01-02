@@ -50,11 +50,17 @@ export function ArchivesPage() {
                   <img
                     src="https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/legrand-richards.jpg"
                     alt="LeGrand Richards"
-                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() =>
+                      setLightboxImage({
+                        url: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/legrand-richards.jpg',
+                        alt: 'LeGrand Richards',
+                      })
+                    }
                   />
                   <div>
                     <p className="font-medium text-gray-900">Bishop LeGrand Richards</p>
-                    <p className="text-sm text-gray-500">Presiding Bishop of the Church</p>
+                    <p className="text-sm text-gray-500">Presiding Bishop, later called as an apostle</p>
                   </div>
                 </div>
               )}
