@@ -4,6 +4,7 @@ import { usePerson } from '../hooks/usePerson'
 import { usePersonCallings } from '../hooks/usePersonCallings'
 import { usePersonMemories } from '../hooks/usePersonMemories'
 import { usePersonPhotos } from '../hooks/usePersonPhotos'
+import { usePersonAudio } from '../hooks/usePersonAudio'
 import { useAuth } from '../hooks/useAuth'
 import { useUserProfile } from '../hooks/useUserProfile'
 import { PersonPageAvatar } from '../components/people/PersonPageAvatar'
@@ -12,6 +13,7 @@ import { AuthModal } from '../components/auth/AuthModal'
 import { ContributionNudge } from '../components/ui/ContributionNudge'
 import { WatchButton } from '../components/people/WatchButton'
 import { WatchPromoBanner } from '../components/people/WatchPromoBanner'
+import { AudioPlayer } from '../components/archives/AudioPlayer'
 import { formatCallingRange, parseLocalDate } from '../lib/utils'
 
 const relationshipLabels: Record<string, string> = {
@@ -31,6 +33,7 @@ export function PersonMemoriesPage() {
   const { callings, loading: callingsLoading } = usePersonCallings(id || '')
   const { memories, loading: memoriesLoading } = usePersonMemories(id || '')
   const { photos, loading: photosLoading } = usePersonPhotos(id || '')
+  const { audioClips, isLoading: audioLoading } = usePersonAudio(id || '')
   const [showContributeModal, setShowContributeModal] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [searchParams] = useSearchParams()
@@ -43,7 +46,7 @@ export function PersonMemoriesPage() {
     }
   }, [searchParams, person, showContributeModal, id, navigate])
 
-  const loading = personLoading || callingsLoading || memoriesLoading || photosLoading
+  const loading = personLoading || callingsLoading || memoriesLoading || photosLoading || audioLoading
   const hasContent = memories.length > 0 || photos.length > 0 || (person?.portrait_url && !person?.portrait_pending)
 
   if (loading) {
@@ -363,6 +366,39 @@ export function PersonMemoriesPage() {
           </div>
         )}
       </section>
+
+      {audioClips.length > 0 && (
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-primary-700 mb-4 flex items-center gap-2">
+            <span className="text-xl">🎧</span>
+            Audio Recordings
+          </h2>
+          <div className="space-y-4">
+            {audioClips.map((clip) => (
+              <div
+                key={clip.id}
+                className="bg-white border border-gray-200 rounded-lg p-4"
+              >
+                <div className="mb-3">
+                  <h3 className="text-lg font-semibold text-gray-900">{clip.title}</h3>
+                  {clip.event_context && (
+                    <p className="text-sm text-gray-600 mt-1">{clip.event_context}</p>
+                  )}
+                  {clip.approximate_date && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      <span className="text-gray-400">Date:</span> {clip.approximate_date}
+                    </p>
+                  )}
+                  {clip.description && (
+                    <p className="text-sm text-gray-700 mt-2">{clip.description}</p>
+                  )}
+                </div>
+                <AudioPlayer audioUrl={clip.audio_url} compact />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {!hasContent && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">

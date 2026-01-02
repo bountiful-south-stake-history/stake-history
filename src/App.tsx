@@ -9,6 +9,7 @@ import { AdminPage } from './pages/AdminPage'
 import { PhotoAlbumPage } from './pages/PhotoAlbumPage'
 import { PhotoDetailPage } from './pages/PhotoDetailPage'
 import { MyWatchlistPage } from './pages/MyWatchlistPage'
+import { ArchivesPage } from './pages/ArchivesPage'
 import { FeatureAnnouncementModal } from './components/announcements/FeatureAnnouncementModal'
 import { useFeatureAnnouncements } from './hooks/useFeatureAnnouncements'
 
@@ -26,6 +27,7 @@ function App() {
           <Route path="/photos" element={<PhotoAlbumPage />} />
           <Route path="/photo/:photoId" element={<PhotoDetailPage />} />
           <Route path="/my-watchlist" element={<MyWatchlistPage />} />
+          <Route path="/archives" element={<ArchivesPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
