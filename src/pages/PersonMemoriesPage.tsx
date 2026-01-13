@@ -113,10 +113,10 @@ export function PersonMemoriesPage() {
             onContributeClick={() => setShowContributeModal(true)}
             onUploadComplete={() => window.location.reload()}
           />
-          <div className="flex-1">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <h1 className="text-4xl font-bold text-primary-700 mb-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-3xl sm:text-4xl font-bold text-primary-700 mb-2 break-words">
                   {person.display_name || person.full_name}
                 </h1>
                 {(person.birth_date || person.death_date) && (
@@ -127,7 +127,7 @@ export function PersonMemoriesPage() {
                 )}
               </div>
               {!person.redacted && (
-                <div className="flex flex-col items-end gap-2.5">
+                <div className="flex flex-col items-start sm:items-end gap-2.5 flex-shrink-0">
                   <button
                     onClick={() => setShowContributeModal(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors whitespace-nowrap"
@@ -193,7 +193,9 @@ export function PersonMemoriesPage() {
       )}
 
       <section className="mb-12">
-        <h2 className="text-2xl font-bold text-primary-700 mb-4">Memories</h2>
+        <h2 className="text-2xl font-bold text-primary-700 mb-4">
+          Memories {(!authLoading && !profileLoading && (user && !userProfile?.view_blocked)) && `(${memories.length})`}
+        </h2>
         {(!authLoading && !profileLoading && (!user || userProfile?.view_blocked)) ? (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
             <div className="flex items-center justify-center gap-2 text-gray-600 mb-4">
@@ -249,17 +251,13 @@ export function PersonMemoriesPage() {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-            <p className="text-lg text-gray-600">
-              No memories have been shared yet.
-            </p>
-          </div>
-        )}
+        ) : null}
       </section>
 
       <section className="mb-12">
-        <h2 className="text-2xl font-bold text-primary-700 mb-4">Photos</h2>
+        <h2 className="text-2xl font-bold text-primary-700 mb-4">
+          Photos {(!authLoading && !profileLoading && (user && !userProfile?.view_blocked)) && `(${photos.length})`}
+        </h2>
         {(!authLoading && !profileLoading && (!user || userProfile?.view_blocked)) ? (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
             <div className="flex items-center justify-center gap-2 text-gray-600 mb-4">
@@ -358,13 +356,7 @@ export function PersonMemoriesPage() {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-            <p className="text-lg text-gray-600">
-              No photos have been shared yet.
-            </p>
-          </div>
-        )}
+        ) : null}
       </section>
 
       {audioClips.length > 0 && (
@@ -403,7 +395,7 @@ export function PersonMemoriesPage() {
       {!hasContent && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
           <p className="text-lg text-gray-600 mb-4">
-            No memories have been shared yet. Be the first to add!
+            Be the first to share images or memories about this person!
           </p>
           <button
             onClick={() => setShowContributeModal(true)}

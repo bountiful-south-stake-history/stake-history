@@ -207,6 +207,7 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
       setShowRejectModal(null)
       setRejectionReason('')
       refetch()
+      onActionComplete?.()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to reject portrait')
     } finally {

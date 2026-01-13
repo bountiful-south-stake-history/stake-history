@@ -17,17 +17,25 @@ export function usePendingPortraits() {
       setLoading(true)
       setError(null)
       
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError, count } = await supabase
         .from('portrait_submissions')
         .select(`
           *,
           person:people(*)
-        `)
+        `, { count: 'exact' })
         .eq('status', 'pending')
         .order('submitted_at', { ascending: false })
 
       if (fetchError) throw fetchError
-      setPortraits((data || []) as PendingPortrait[])
+      
+      const portraitsData = (data || []) as PendingPortrait[]
+      console.log('Pending Portraits:', {
+        count: portraitsData.length,
+        queryCount: count,
+        data: portraitsData.map(p => ({ id: p.id, person_id: p.person_id, status: p.status })),
+      })
+      
+      setPortraits(portraitsData)
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch pending portraits'))
     } finally {

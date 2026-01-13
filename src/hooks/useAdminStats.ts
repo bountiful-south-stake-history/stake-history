@@ -39,11 +39,24 @@ export function useAdminStats() {
           .eq('status', 'pending'),
       ])
 
+      const portraitCount = portraitsResult.count ?? 0
+      const correctionCount = correctionsResult.count ?? 0
+      const memoryCount = memoriesResult.count ?? 0
+      const photoCount = photosResult.count ?? 0
+
+      console.log('Admin Stats:', {
+        pendingPortraits: portraitCount,
+        pendingCorrections: correctionCount,
+        pendingMemories: memoryCount,
+        pendingPhotos: photoCount,
+        portraitError: portraitsResult.error,
+      })
+
       setStats({
-        pendingPortraits: portraitsResult.count || 0,
-        pendingCorrections: correctionsResult.count || 0,
-        pendingMemories: memoriesResult.count || 0,
-        pendingPhotos: photosResult.count || 0,
+        pendingPortraits: portraitCount,
+        pendingCorrections: correctionCount,
+        pendingMemories: memoryCount,
+        pendingPhotos: photoCount,
       })
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch stats'))

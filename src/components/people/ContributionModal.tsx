@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 import imageCompression from 'browser-image-compression'
@@ -70,6 +70,8 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
   const [portraitDragActive, setPortraitDragActive] = useState(false)
   const [crop, setCrop] = useState<Crop>()
   const [completedCrop, setCompletedCrop] = useState<Crop>()
+  const [percentCropState, setPercentCropState] = useState<Crop>()
+  const [showCropInterface, setShowCropInterface] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -82,9 +84,13 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
   const [registrationStatus, setRegistrationStatus] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null)
   const [registrationAttempted, setRegistrationAttempted] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
+  const overlayImgRef = useRef<HTMLImageElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const photosInputRef = useRef<HTMLInputElement>(null)
   const [hasAutoPopulated, setHasAutoPopulated] = useState(false)
+  const [showCropOverlay, setShowCropOverlay] = useState(false)
+  const [showSubmitterFields, setShowSubmitterFields] = useState(true)
+  const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null)
   
   const { people: tagSearchResults, loading: tagSearchLoading } = usePeopleSearch(tagSearchTerm)
   const { user } = useAuth()
@@ -110,6 +116,9 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
       setConfirmPassword('')
       setFormErrors((prev) => ({ ...prev, password: undefined, confirmPassword: undefined }))
       setRegistrationStatus(null)
+      setShowSubmitterFields(false)
+    } else {
+      setShowSubmitterFields(true)
     }
   }, [user])
 
@@ -284,6 +293,11 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
       const file = imageFiles[0]
       setSelectedFile(file)
       setError(null)
+      setShowCropInterface(false)
+      setCrop(undefined)
+      setCompletedCrop(undefined)
+      setPercentCropState(undefined)
+      setCroppedPreviewUrl(null)
       const reader = new FileReader()
       reader.onload = () => {
         setPreviewUrl(reader.result as string)
@@ -382,7 +396,8 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
     const baseValid = submitterName.trim() !== '' && submitterEmail.trim() !== '' && validateEmail(submitterEmail)
 
     if (contributionType === 'portrait') {
-      return baseValid && previewUrl !== null && completedCrop !== undefined
+      const hasCrop = completedCrop || percentCropState || crop
+      return baseValid && previewUrl !== null && hasCrop !== undefined
     } else if (contributionType === 'correction') {
       return baseValid && correctionDescription.trim() !== ''
     } else if (contributionType === 'memory') {
@@ -404,6 +419,11 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
     setSelectedFile(file)
     setError(null)
+    setShowCropInterface(false)
+    setCrop(undefined)
+    setCompletedCrop(undefined)
+    setPercentCropState(undefined)
+    setCroppedPreviewUrl(null)
     const reader = new FileReader()
     reader.onload = () => {
       setPreviewUrl(reader.result as string)
@@ -456,31 +476,129 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
   }
 
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { naturalWidth, naturalHeight } = e.currentTarget
-    const crop = centerCrop(
-      makeAspectCrop(
-        {
-          unit: '%',
-          width: 90,
-        },
-        aspectRatio,
+    if (!crop) {
+      const { naturalWidth, naturalHeight } = e.currentTarget
+      const initialCrop = centerCrop(
+        makeAspectCrop(
+          {
+            unit: '%',
+            width: 90,
+          },
+          aspectRatio,
+          naturalWidth,
+          naturalHeight
+        ),
         naturalWidth,
         naturalHeight
-      ),
-      naturalWidth,
-      naturalHeight
+      )
+      setCrop(initialCrop)
+      setCompletedCrop(initialCrop)
+      setPercentCropState(initialCrop)
+    }
+  }
+
+  const generateCroppedPreview = useCallback(() => {
+    if (!completedCrop) return null
+    
+    const image = imgRef.current || overlayImgRef.current
+    if (!image || !image.complete) return null
+    
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    
+    const naturalWidth = image.naturalWidth
+    const naturalHeight = image.naturalHeight
+    
+    const cropToUse = completedCrop.unit === '%' ? completedCrop : percentCropState || completedCrop
+    
+    if (!cropToUse || cropToUse.unit !== '%') {
+      console.warn('No percentage crop available, using fallback')
+      return null
+    }
+    
+    const cropX = (cropToUse.x / 100) * naturalWidth
+    const cropY = (cropToUse.y / 100) * naturalHeight
+    const cropWidth = (cropToUse.width / 100) * naturalWidth
+    const cropHeight = (cropToUse.height / 100) * naturalHeight
+    
+    canvas.width = 120
+    canvas.height = 150
+    
+    ctx.imageSmoothingQuality = 'high'
+    
+    ctx.drawImage(
+      image,
+      Math.round(cropX),
+      Math.round(cropY),
+      Math.round(cropWidth),
+      Math.round(cropHeight),
+      0,
+      0,
+      120,
+      150
     )
-    setCrop(crop)
+    
+    return canvas.toDataURL('image/jpeg', 0.9)
+  }, [completedCrop, percentCropState])
+
+  useEffect(() => {
+    if (completedCrop) {
+      const preview = generateCroppedPreview()
+      setCroppedPreviewUrl(preview)
+    } else {
+      setCroppedPreviewUrl(null)
+    }
+  }, [completedCrop, generateCroppedPreview])
+
+  useEffect(() => {
+    if (showCropOverlay) {
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setShowCropOverlay(false)
+        }
+      }
+      document.addEventListener('keydown', handleEscape)
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.removeEventListener('keydown', handleEscape)
+        document.body.style.overflow = ''
+      }
+    }
+  }, [showCropOverlay])
+
+  const handleApplyCrop = () => {
+    setShowCropOverlay(false)
   }
 
   const getCroppedImg = async (image: HTMLImageElement, crop: Crop): Promise<Blob> => {
+    if (!image.complete) {
+      throw new Error('Image not loaded')
+    }
+
+    const cropToUse = crop.unit === '%' ? crop : (percentCropState || completedCrop || crop)
+
+    if (!cropToUse || cropToUse.x === undefined || cropToUse.y === undefined || !cropToUse.width || !cropToUse.height) {
+      throw new Error('Invalid crop coordinates')
+    }
+
+    if (cropToUse.unit !== '%') {
+      console.error('Expected percentage crop, got:', cropToUse)
+      throw new Error('Expected percentage crop, got pixel crop')
+    }
+
     const canvas = document.createElement('canvas')
-    const scaleX = image.naturalWidth / image.width
-    const scaleY = image.naturalHeight / image.height
+    const naturalWidth = image.naturalWidth
+    const naturalHeight = image.naturalHeight
     const pixelRatio = window.devicePixelRatio
 
-    canvas.width = crop.width! * scaleX * pixelRatio
-    canvas.height = crop.height! * scaleY * pixelRatio
+    const cropX = (cropToUse.x / 100) * naturalWidth
+    const cropY = (cropToUse.y / 100) * naturalHeight
+    const cropWidth = (cropToUse.width / 100) * naturalWidth
+    const cropHeight = (cropToUse.height / 100) * naturalHeight
+
+    canvas.width = Math.round(cropWidth * pixelRatio)
+    canvas.height = Math.round(cropHeight * pixelRatio)
 
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('No 2d context')
@@ -488,19 +606,16 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
     ctx.imageSmoothingQuality = 'high'
 
-    const cropX = crop.x! * scaleX
-    const cropY = crop.y! * scaleY
-
     ctx.drawImage(
       image,
-      cropX,
-      cropY,
-      crop.width! * scaleX,
-      crop.height! * scaleY,
+      Math.round(cropX),
+      Math.round(cropY),
+      Math.round(cropWidth),
+      Math.round(cropHeight),
       0,
       0,
-      crop.width! * scaleX,
-      crop.height! * scaleY
+      cropWidth,
+      cropHeight
     )
 
     return new Promise((resolve, reject) => {
@@ -601,8 +716,42 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
   }
 
   const handlePortraitUpload = async () => {
-    if (!selectedFile || !previewUrl || !completedCrop || !imgRef.current) {
-      setError('Please select and crop an image')
+    if (!selectedFile || !previewUrl) {
+      setError('Please select an image')
+      return
+    }
+
+    const cropToUse = completedCrop || percentCropState || crop
+    if (!cropToUse || cropToUse.x === undefined || cropToUse.y === undefined || !cropToUse.width || !cropToUse.height) {
+      setError('Please wait for the image to load, then try again.')
+      return
+    }
+
+    let image: HTMLImageElement | null = overlayImgRef.current || imgRef.current
+    
+    if (!image) {
+      const tempImg = new Image()
+      tempImg.src = previewUrl
+      await new Promise<void>((resolve, reject) => {
+        tempImg.onload = () => resolve()
+        tempImg.onerror = () => reject(new Error('Failed to load image'))
+      })
+      image = tempImg
+    } else {
+      if (!image.complete) {
+        await new Promise<void>((resolve) => {
+          if (image!.complete) {
+            resolve()
+          } else {
+            image!.onload = () => resolve()
+            image!.onerror = () => resolve()
+          }
+        })
+      }
+    }
+
+    if (!image) {
+      setError('Failed to load image. Please try again.')
       return
     }
 
@@ -612,7 +761,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
     setRegistrationAttempted(false)
 
     try {
-      const croppedBlob = await getCroppedImg(imgRef.current, completedCrop)
+      const croppedBlob = await getCroppedImg(image, cropToUse)
       const croppedFile = new File([croppedBlob], 'portrait.jpg', { type: 'image/jpeg' })
 
       const options = {
@@ -1094,10 +1243,21 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
           <div className="space-y-6">
             <div className="border-b border-gray-200 pb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Submitter Information
-              </h3>
-              <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Submitter Information
+                </h3>
+                {user && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSubmitterFields(!showSubmitterFields)}
+                    className="text-sm text-primary-600 hover:text-primary-700"
+                  >
+                    {showSubmitterFields ? 'Hide' : 'Show'}
+                  </button>
+                )}
+              </div>
+              <div className={`space-y-4 ${user && !showSubmitterFields ? 'hidden' : ''}`}>
                 <div>
                   <label htmlFor="submitter-name" className="block text-sm font-medium text-gray-700 mb-1">
                     Your Name <span className="text-red-500">*</span>
@@ -1364,24 +1524,99 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="flex justify-center">
-                      <ReactCrop
-                        crop={crop}
-                        onChange={(_, percentCrop) => setCrop(percentCrop)}
-                        onComplete={(c) => setCompletedCrop(c)}
-                        aspect={aspectRatio}
-                        minWidth={100}
-                        disabled={submitting || success}
-                      >
-                        <img
-                          ref={imgRef}
-                          alt="Crop preview"
-                          src={previewUrl}
-                          onLoad={onImageLoad}
-                          className="max-w-full max-h-[400px]"
-                        />
-                      </ReactCrop>
-                    </div>
+                    {!showCropInterface ? (
+                      <div className="space-y-3">
+                        <div className="flex justify-center">
+                          {croppedPreviewUrl ? (
+                            <img
+                              src={croppedPreviewUrl}
+                              alt="Crop preview"
+                              className="w-24 h-[120px] md:w-auto md:h-auto md:max-w-full md:max-h-[400px] object-cover rounded-lg border-2 border-gray-200"
+                            />
+                          ) : (
+                            <img
+                              ref={imgRef}
+                              alt="Image preview"
+                              src={previewUrl || ''}
+                              onLoad={onImageLoad}
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '400px',
+                                width: 'auto',
+                                height: 'auto',
+                              }}
+                              className="rounded-lg"
+                            />
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (!crop && imgRef.current) {
+                              onImageLoad({ currentTarget: imgRef.current } as React.SyntheticEvent<HTMLImageElement>)
+                            }
+                            setShowCropInterface(true)
+                          }}
+                          disabled={submitting || success}
+                          className="w-full py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Adjust Crop
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex justify-center">
+                          <ReactCrop
+                            crop={crop}
+                            onChange={(_, percentCrop) => {
+                              setCrop(percentCrop)
+                              setPercentCropState(percentCrop)
+                              setCompletedCrop(percentCrop)
+                            }}
+                            onComplete={() => {
+                              if (percentCropState) {
+                                setCompletedCrop(percentCropState)
+                                setCrop(percentCropState)
+                              }
+                            }}
+                            aspect={aspectRatio}
+                            minWidth={100}
+                            disabled={submitting || success}
+                          >
+                            <img
+                              ref={imgRef}
+                              alt="Crop preview"
+                              src={previewUrl || ''}
+                              onLoad={(e) => {
+                                if (!crop) {
+                                  onImageLoad(e)
+                                }
+                              }}
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '400px',
+                                width: 'auto',
+                                height: 'auto',
+                              }}
+                            />
+                          </ReactCrop>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (percentCropState) {
+                              setCompletedCrop(percentCropState)
+                              setCrop(percentCropState)
+                            } else if (crop) {
+                              setCompletedCrop(crop)
+                            }
+                            setShowCropInterface(false)
+                          }}
+                          disabled={submitting || success}
+                          className="w-full py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Done Cropping
+                        </button>
+                      </div>
+                    )}
 
                     <button
                       onClick={() => {
@@ -1389,6 +1624,9 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                         setPreviewUrl(null)
                         setCrop(undefined)
                         setCompletedCrop(undefined)
+                        setCroppedPreviewUrl(null)
+                        setShowCropInterface(false)
+                        setPercentCropState(undefined)
                       }}
                       disabled={submitting || success}
                       className="text-sm text-primary-600 hover:text-primary-700 underline disabled:opacity-50"
@@ -1850,6 +2088,83 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
           </div>
         </div>
       </div>
+
+      {showCropOverlay && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex flex-col">
+          <div className="flex items-center justify-between p-4 text-white">
+            <h3 className="text-lg font-medium">Crop Portrait</h3>
+            <button
+              onClick={() => setShowCropOverlay(false)}
+              className="text-white hover:text-gray-300 transition-colors"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+            <ReactCrop
+              crop={crop}
+              onChange={(_, percentCrop) => {
+                setCrop(percentCrop)
+                setPercentCropState(percentCrop)
+                setCompletedCrop(percentCrop)
+              }}
+              onComplete={() => {
+                if (percentCropState) {
+                  setCompletedCrop(percentCropState)
+                  setCrop(percentCropState)
+                }
+              }}
+              aspect={aspectRatio}
+              minWidth={100}
+            >
+              <img
+                ref={overlayImgRef}
+                src={previewUrl || ''}
+                onLoad={(e) => {
+                  if (!crop) {
+                    onImageLoad(e)
+                  }
+                }}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '70vh',
+                  width: 'auto',
+                  height: 'auto',
+                }}
+                alt="Crop preview"
+              />
+            </ReactCrop>
+          </div>
+          
+          <div className="flex gap-3 p-4 bg-black/50">
+            <button
+              onClick={() => setShowCropOverlay(false)}
+              className="flex-1 py-3 border border-white/30 text-white rounded-lg hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleApplyCrop}
+              className="flex-1 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              Apply Crop
+            </button>
+          </div>
+        </div>
+      )}
 
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
