@@ -358,7 +358,7 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
             {callings.map((calling) => {
               const isEditing = editingId === calling.id
               return (
-                <div key={calling.id} className="p-4">
+                <div key={calling.id} className="p-4 border-b border-gray-200 last:border-b-0">
                   {isEditing ? (
                     <>
                       <div className="mb-3">
@@ -430,33 +430,33 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
                     </>
                   ) : (
                     <>
-                      <div className="mb-2">
+                      <div className="mb-3">
                         <Link
                           to={`/person/${calling.person_id}`}
-                          className="text-base font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                          className="text-base font-semibold text-primary-600 hover:text-primary-700 hover:underline break-words"
                         >
                           {calling.person?.display_name || calling.person?.full_name}
                         </Link>
                       </div>
                       <div className="mb-2">
-                        <span className="text-xs text-gray-500">Position: </span>
-                        <span className="text-sm text-gray-900">{calling.position?.title}</span>
+                        <span className="text-xs font-medium text-gray-500 uppercase">Position</span>
+                        <div className="mt-1 text-sm text-gray-900">{calling.position?.title}</div>
                       </div>
                       <div className="mb-2">
-                        <span className="text-xs text-gray-500">Sustained: </span>
-                        <span className="text-sm text-gray-900">
+                        <span className="text-xs font-medium text-gray-500 uppercase">Sustained</span>
+                        <div className="mt-1 text-sm text-gray-900">
                           {calling.sustained_date ? new Date(calling.sustained_date).toLocaleDateString() : '-'}
-                        </span>
+                        </div>
                       </div>
                       <div className="mb-2">
-                        <span className="text-xs text-gray-500">Released: </span>
-                        <span className="text-sm text-gray-900">
+                        <span className="text-xs font-medium text-gray-500 uppercase">Released</span>
+                        <div className="mt-1 text-sm text-gray-900">
                           {calling.released_date ? new Date(calling.released_date).toLocaleDateString() : 'Current'}
-                        </span>
+                        </div>
                       </div>
-                      <div className="mb-3">
-                        <span className="text-xs text-gray-500">Presidency #: </span>
-                        <span className="text-sm text-gray-900">{calling.presidency_number || '-'}</span>
+                      <div className="mb-4">
+                        <span className="text-xs font-medium text-gray-500 uppercase">Presidency #</span>
+                        <div className="mt-1 text-sm text-gray-900">{calling.presidency_number || '-'}</div>
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         <button

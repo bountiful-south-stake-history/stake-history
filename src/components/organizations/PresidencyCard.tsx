@@ -42,14 +42,14 @@ export function PresidencyCard({ presidencyNumber, callings, labelType = 'presid
   const isCurrent = callings.some(c => !c.released_date)
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-primary-700">
+    <div className="bg-white rounded-lg shadow-md p-4 md:p-6 border border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+        <h3 className="text-lg md:text-xl font-bold text-primary-700">
           {presidencyNumber === 0 
             ? 'Current Leadership' 
             : `${presidencyNumber}${getOrdinalSuffix(presidencyNumber)} ${labelType === 'bishopric' ? 'Bishopric' : 'Presidency'}`}
         </h3>
-        <span className="text-sm text-gray-600">
+        <span className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
           {earliestDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })} –{' '}
           {isCurrent ? 'Present' : latestDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
         </span>
@@ -57,13 +57,13 @@ export function PresidencyCard({ presidencyNumber, callings, labelType = 'presid
 
       {president && (
         <div className="mb-4 pb-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
+          <div className="flex items-start sm:items-center gap-3">
             <PortraitDisplay person={president.person} />
-            <div className="flex-1">
-              <div className="font-semibold text-lg">
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-base md:text-lg break-words">
                 <PersonNameLink person={president.person} className="text-primary-700" />
               </div>
-              <div className="text-sm text-gray-600">{president.position.title}</div>
+              <div className="text-sm text-gray-600 mt-1">{president.position.title}</div>
               <div className="text-xs text-gray-500 mt-1">
                 {formatCallingRange(president)}
               </div>
@@ -77,15 +77,15 @@ export function PresidencyCard({ presidencyNumber, callings, labelType = 'presid
           <h4 className="text-sm font-semibold text-gray-700 mb-2">
             {labelType === 'bishopric' ? 'Counselors' : 'Counselors'}
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {counselors.map(calling => (
-              <div key={calling.id} className="flex items-center gap-3 pl-4">
+              <div key={calling.id} className="flex items-start sm:items-center gap-3 pl-0 sm:pl-4">
                 <PortraitDisplay person={calling.person} />
-                <div className="flex-1">
-                  <div className="font-medium">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm md:text-base break-words">
                     <PersonNameLink person={calling.person} className="text-gray-900" />
                   </div>
-                  <div className="text-sm text-gray-600">{calling.position.title}</div>
+                  <div className="text-sm text-gray-600 mt-1">{calling.position.title}</div>
                   <div className="text-xs text-gray-500 mt-1">
                     {formatCallingRange(calling)}
                   </div>
@@ -99,15 +99,15 @@ export function PresidencyCard({ presidencyNumber, callings, labelType = 'presid
       {others.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-gray-700 mb-2">Other Positions</h4>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {others.map(calling => (
-              <div key={calling.id} className="flex items-center gap-3 pl-4">
+              <div key={calling.id} className="flex items-start sm:items-center gap-3 pl-0 sm:pl-4">
                 <PortraitDisplay person={calling.person} />
-                <div className="flex-1">
-                  <div className="font-medium">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm md:text-base break-words">
                     <PersonNameLink person={calling.person} className="text-gray-900" />
                   </div>
-                  <div className="text-sm text-gray-600">{calling.position.title}</div>
+                  <div className="text-sm text-gray-600 mt-1">{calling.position.title}</div>
                   <div className="text-xs text-gray-500 mt-1">
                     {formatCallingRange(calling)}
                   </div>

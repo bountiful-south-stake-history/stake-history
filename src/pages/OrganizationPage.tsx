@@ -87,28 +87,28 @@ export function OrganizationPage() {
   }[organization.org_type] || organization.org_type
 
   return (
-    <div>
-      <div className="mb-6">
+    <div className="px-4 md:px-0">
+      <div className="mb-4 md:mb-6">
         <Link
           to="/"
-          className="text-primary-600 hover:text-primary-700 underline mb-4 inline-block"
+          className="text-primary-600 hover:text-primary-700 underline mb-3 md:mb-4 inline-block text-sm md:text-base"
         >
           ← Back to Home
         </Link>
-        <h1 className="text-4xl font-bold text-primary-700 mt-2">
+        <h1 className="text-2xl md:text-4xl font-bold text-primary-700 mt-2 break-words">
           {organization.name}
         </h1>
-        <p className="text-lg text-gray-600 mt-1">
+        <p className="text-base md:text-lg text-gray-600 mt-1">
           {orgTypeLabel} • {organization.organized_date && `Organized ${parseLocalDate(organization.organized_date).getFullYear()}`}
         </p>
         {organization.discontinued_date && (
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs md:text-sm text-gray-500 mt-1">
             Discontinued {parseLocalDate(organization.discontinued_date).getFullYear()}
           </p>
         )}
         {organization.notes && (
-          <div className="bg-gray-50 border-l-4 border-primary-500 rounded-r-lg p-4 mt-4">
-            <p className="text-sm text-gray-700 italic leading-relaxed">
+          <div className="bg-gray-50 border-l-4 border-primary-500 rounded-r-lg p-3 md:p-4 mt-3 md:mt-4">
+            <p className="text-xs md:text-sm text-gray-700 italic leading-relaxed">
               {organization.notes}
             </p>
           </div>
@@ -116,13 +116,13 @@ export function OrganizationPage() {
       </div>
 
       {callings.length === 0 ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-          <p className="text-gray-600">No calling records found for this organization.</p>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 md:p-8 text-center">
+          <p className="text-sm md:text-base text-gray-600">No calling records found for this organization.</p>
         </div>
       ) : displayType === 'numbered' ? (
         <NumberedList callings={callings} />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {sortedPresidencies.map(({ number, callings: presCallings }) => (
             <PresidencyCard
               key={number}

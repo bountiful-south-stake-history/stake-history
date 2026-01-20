@@ -36,7 +36,15 @@ export function useWatchedPeople() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
-      if (fetchError) throw fetchError
+      if (fetchError) {
+        if (fetchError.code === '42P01' || fetchError.status === 406) {
+          console.warn('person_follows table does not exist or is not accessible')
+          setWatchedPeople([])
+          setIsLoading(false)
+          return
+        }
+        throw fetchError
+      }
 
       const people = (data || [])
         .map((item: any) => item.people)

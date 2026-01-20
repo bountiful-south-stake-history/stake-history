@@ -678,20 +678,22 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
 
                 <div className="md:hidden space-y-3">
                   {currentPresidencyCallings.map((calling) => (
-                    <div key={calling.id} className="p-4 border border-gray-200 rounded-lg">
+                    <div key={calling.id} className="p-4 border border-gray-200 rounded-lg bg-white">
                       <div className="mb-2">
-                        <span className="text-sm font-medium text-gray-900">{calling.position?.title}</span>
+                        <span className="text-xs font-medium text-gray-500 uppercase">Position</span>
+                        <div className="mt-1 text-sm font-medium text-gray-900">{calling.position?.title}</div>
                       </div>
                       <div className="mb-2">
-                        <span className="text-base font-medium text-gray-900">
+                        <span className="text-xs font-medium text-gray-500 uppercase">Name</span>
+                        <div className="mt-1 text-base font-semibold text-gray-900 break-words">
                           {calling.person?.display_name || calling.person?.full_name}
-                        </span>
+                        </div>
                       </div>
-                      <div className="mb-3">
-                        <span className="text-xs text-gray-500">Sustained: </span>
-                        <span className="text-sm text-gray-900">
+                      <div className="mb-4">
+                        <span className="text-xs font-medium text-gray-500 uppercase">Sustained</span>
+                        <div className="mt-1 text-sm text-gray-900">
                           {formatDate(calling.sustained_date, calling.sustained_precision)}
-                        </span>
+                        </div>
                       </div>
                       <div>
                         <button
@@ -699,7 +701,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                             setShowReleaseModal(calling)
                             setReleaseDate(new Date().toISOString().split('T')[0])
                           }}
-                          className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:underline"
+                          className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors"
                         >
                           Release
                         </button>
@@ -802,21 +804,22 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
 
                 <div className="md:hidden space-y-3">
                   {currentCallings.map((calling) => (
-                    <div key={calling.id} className="p-4 border border-gray-200 rounded-lg">
+                    <div key={calling.id} className="p-4 border border-gray-200 rounded-lg bg-white">
                       <div className="mb-2">
-                        <span className="text-xs text-gray-500">#</span>
-                        <span className="text-sm text-gray-900 ml-1">#{calling.presidency_number || '-'}</span>
+                        <span className="text-xs font-medium text-gray-500 uppercase">Presidency #</span>
+                        <div className="mt-1 text-sm text-gray-900">#{calling.presidency_number || '-'}</div>
                       </div>
                       <div className="mb-2">
-                        <span className="text-base font-medium text-gray-900">
+                        <span className="text-xs font-medium text-gray-500 uppercase">Name</span>
+                        <div className="mt-1 text-base font-semibold text-gray-900 break-words">
                           {calling.person?.display_name || calling.person?.full_name}
-                        </span>
+                        </div>
                       </div>
-                      <div className="mb-3">
-                        <span className="text-xs text-gray-500">Dates: </span>
-                        <span className="text-sm text-gray-900">
+                      <div className="mb-4">
+                        <span className="text-xs font-medium text-gray-500 uppercase">Dates</span>
+                        <div className="mt-1 text-sm text-gray-900">
                           {formatDate(calling.sustained_date, calling.sustained_precision)} – present
-                        </span>
+                        </div>
                       </div>
                       <div>
                         <button
@@ -824,7 +827,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                             setShowReleaseModal(calling)
                             setReleaseDate(new Date().toISOString().split('T')[0])
                           }}
-                          className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:underline"
+                          className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors"
                         >
                           Release
                         </button>

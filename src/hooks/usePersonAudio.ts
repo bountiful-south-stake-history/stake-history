@@ -42,6 +42,27 @@ export function usePersonAudio(personId: string) {
             setIsLoading(false)
             return
           }
+          if (fetchError.code === '42703') {
+            console.warn('approximate_date column does not exist, ordering by created_at only')
+            const { data: retryData, error: retryError } = await supabase
+              .from('audio_clips')
+              .select('*')
+              .eq('person_id', personId)
+              .order('created_at', { ascending: false })
+            
+            if (retryError) {
+              if (retryError.code === '42P01') {
+                console.warn('audio_clips table does not exist yet')
+                setAudioClips([])
+                setIsLoading(false)
+                return
+              }
+              throw retryError
+            }
+            setAudioClips(retryData || [])
+            setIsLoading(false)
+            return
+          }
           throw fetchError
         }
 
