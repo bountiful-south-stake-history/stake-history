@@ -676,38 +676,46 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                   </table>
                 </div>
 
-                <div className="md:hidden space-y-3">
-                  {currentPresidencyCallings.map((calling) => (
-                    <div key={calling.id} className="p-4 border border-gray-200 rounded-lg bg-white">
-                      <div className="mb-2">
-                        <span className="text-xs font-medium text-gray-500 uppercase">Position</span>
-                        <div className="mt-1 text-sm font-medium text-gray-900">{calling.position?.title}</div>
-                      </div>
-                      <div className="mb-2">
-                        <span className="text-xs font-medium text-gray-500 uppercase">Name</span>
-                        <div className="mt-1 text-base font-semibold text-gray-900 break-words">
-                          {calling.person?.display_name || calling.person?.full_name}
+                <div className="md:hidden bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
+                  {currentPresidencyCallings.map((calling) => {
+                    const positionLabel = calling.position?.title?.toLowerCase().includes('president') 
+                      ? 'President'
+                      : calling.position?.title?.toLowerCase().includes('first')
+                        ? '1st Counselor'
+                        : calling.position?.title?.toLowerCase().includes('second')
+                          ? '2nd Counselor'
+                          : calling.position?.title || 'Member'
+                    
+                    return (
+                      <div key={calling.id} className="p-4">
+                        <div className="flex items-start gap-4">
+                          <div className="w-24 flex-shrink-0 pt-1">
+                            <span className="text-sm text-gray-500">{positionLabel}:</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-base text-primary-600 break-words">
+                              {calling.person?.display_name || calling.person?.full_name}
+                            </div>
+                            <div className="text-sm text-primary-400 mt-0.5">
+                              {calling.position?.title}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              Sustained: {formatDate(calling.sustained_date, calling.sustained_precision)}
+                            </div>
+                            <button
+                              onClick={() => {
+                                setShowReleaseModal(calling)
+                                setReleaseDate(new Date().toISOString().split('T')[0])
+                              }}
+                              className="mt-2 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors"
+                            >
+                              Release
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <div className="mb-4">
-                        <span className="text-xs font-medium text-gray-500 uppercase">Sustained</span>
-                        <div className="mt-1 text-sm text-gray-900">
-                          {formatDate(calling.sustained_date, calling.sustained_precision)}
-                        </div>
-                      </div>
-                      <div>
-                        <button
-                          onClick={() => {
-                            setShowReleaseModal(calling)
-                            setReleaseDate(new Date().toISOString().split('T')[0])
-                          }}
-                          className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors"
-                        >
-                          Release
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
 
                 <div className="mt-6 flex gap-4">
@@ -802,35 +810,33 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                   </table>
                 </div>
 
-                <div className="md:hidden space-y-3">
+                <div className="md:hidden bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
                   {currentCallings.map((calling) => (
-                    <div key={calling.id} className="p-4 border border-gray-200 rounded-lg bg-white">
-                      <div className="mb-2">
-                        <span className="text-xs font-medium text-gray-500 uppercase">Presidency #</span>
-                        <div className="mt-1 text-sm text-gray-900">#{calling.presidency_number || '-'}</div>
-                      </div>
-                      <div className="mb-2">
-                        <span className="text-xs font-medium text-gray-500 uppercase">Name</span>
-                        <div className="mt-1 text-base font-semibold text-gray-900 break-words">
-                          {calling.person?.display_name || calling.person?.full_name}
+                    <div key={calling.id} className="p-4">
+                      <div className="flex items-start gap-4">
+                        <div className="w-16 flex-shrink-0 pt-1">
+                          <span className="text-sm text-gray-500">#{calling.presidency_number || '-'}:</span>
                         </div>
-                      </div>
-                      <div className="mb-4">
-                        <span className="text-xs font-medium text-gray-500 uppercase">Dates</span>
-                        <div className="mt-1 text-sm text-gray-900">
-                          {formatDate(calling.sustained_date, calling.sustained_precision)} – present
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-base text-primary-600 break-words">
+                            {calling.person?.display_name || calling.person?.full_name}
+                          </div>
+                          <div className="text-sm text-primary-400 mt-0.5">
+                            {calling.position?.title}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {formatDate(calling.sustained_date, calling.sustained_precision)} – present
+                          </div>
+                          <button
+                            onClick={() => {
+                              setShowReleaseModal(calling)
+                              setReleaseDate(new Date().toISOString().split('T')[0])
+                            }}
+                            className="mt-2 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors"
+                          >
+                            Release
+                          </button>
                         </div>
-                      </div>
-                      <div>
-                        <button
-                          onClick={() => {
-                            setShowReleaseModal(calling)
-                            setReleaseDate(new Date().toISOString().split('T')[0])
-                          }}
-                          className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors"
-                        >
-                          Release
-                        </button>
                       </div>
                     </div>
                   ))}
