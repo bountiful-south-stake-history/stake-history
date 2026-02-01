@@ -960,17 +960,17 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                         
                         {showCropInterface && cropImageUrl ? (
                           <div className="space-y-4">
-                            {/* Crop area with silhouette guide */}
-                            <div className="border border-gray-300 rounded-lg p-2 bg-gray-50 relative">
-                              <ReactCrop
-                                crop={crop}
-                                onChange={(_, percentCrop) => setCrop(percentCrop)}
-                                onComplete={(_, percentCrop) => setCompletedCrop(percentCrop)}
-                                aspect={ASPECT_RATIO}
-                                minWidth={50}
-                                minHeight={62}
-                              >
-                                <div className="relative">
+                            {/* Crop area with reference guide */}
+                            <div className="flex gap-4 items-start">
+                              <div className="flex-1 border border-gray-300 rounded-lg p-2 bg-gray-50">
+                                <ReactCrop
+                                  crop={crop}
+                                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                                  onComplete={(_, percentCrop) => setCompletedCrop(percentCrop)}
+                                  aspect={ASPECT_RATIO}
+                                  minWidth={50}
+                                  minHeight={62}
+                                >
                                   <img
                                     ref={cropImgRef}
                                     src={cropImageUrl}
@@ -980,157 +980,42 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                                     crossOrigin="anonymous"
                                     style={{ filter: imageFilter }}
                                   />
-                                  {/* Silhouette guide overlay - shows inside crop area */}
-                                  {showGuide && crop && (
-                                    <div
-                                      className="absolute pointer-events-none"
-                                      style={{
-                                        left: `${crop.x}%`,
-                                        top: `${crop.y}%`,
-                                        width: `${crop.width}%`,
-                                        height: `${crop.height}%`,
-                                      }}
-                                    >
-                                      <svg
-                                        viewBox="0 0 80 100"
-                                        className="w-full h-full"
-                                        style={{ opacity: 0.35 }}
-                                      >
-                                        {/* Head oval */}
-                                        <ellipse
-                                          cx="40"
-                                          cy="32"
-                                          rx="18"
-                                          ry="22"
-                                          fill="none"
-                                          stroke="#1e40af"
-                                          strokeWidth="1.5"
-                                          strokeDasharray="3,2"
-                                        />
-                                        {/* Neck */}
-                                        <path
-                                          d="M 32 52 Q 32 58 28 65 L 28 75"
-                                          fill="none"
-                                          stroke="#1e40af"
-                                          strokeWidth="1.5"
-                                          strokeDasharray="3,2"
-                                        />
-                                        <path
-                                          d="M 48 52 Q 48 58 52 65 L 52 75"
-                                          fill="none"
-                                          stroke="#1e40af"
-                                          strokeWidth="1.5"
-                                          strokeDasharray="3,2"
-                                        />
-                                        {/* Shoulders */}
-                                        <path
-                                          d="M 28 75 Q 15 78 5 85 L 5 100"
-                                          fill="none"
-                                          stroke="#1e40af"
-                                          strokeWidth="1.5"
-                                          strokeDasharray="3,2"
-                                        />
-                                        <path
-                                          d="M 52 75 Q 65 78 75 85 L 75 100"
-                                          fill="none"
-                                          stroke="#1e40af"
-                                          strokeWidth="1.5"
-                                          strokeDasharray="3,2"
-                                        />
-                                        {/* Eye line indicator */}
-                                        <line
-                                          x1="15"
-                                          y1="30"
-                                          x2="25"
-                                          y2="30"
-                                          stroke="#1e40af"
-                                          strokeWidth="1"
-                                          opacity="0.6"
-                                        />
-                                        <line
-                                          x1="55"
-                                          y1="30"
-                                          x2="65"
-                                          y2="30"
-                                          stroke="#1e40af"
-                                          strokeWidth="1"
-                                          opacity="0.6"
-                                        />
-                                      </svg>
-                                    </div>
-                                  )}
+                                </ReactCrop>
+                              </div>
+                              
+                              {/* Reference silhouette guide */}
+                              {showGuide && (
+                                <div className="flex-shrink-0 w-20 bg-gray-100 rounded-lg p-2">
+                                  <p className="text-xs text-gray-500 text-center mb-1">Guide</p>
+                                  <svg
+                                    viewBox="0 0 80 100"
+                                    className="w-full"
+                                    style={{ opacity: 0.6 }}
+                                  >
+                                    <rect width="80" height="100" fill="#f3f4f6" rx="4" />
+                                    <ellipse cx="40" cy="32" rx="18" ry="22" fill="none" stroke="#1e40af" strokeWidth="2" />
+                                    <path d="M 32 52 Q 32 58 28 65 L 28 75" fill="none" stroke="#1e40af" strokeWidth="2" />
+                                    <path d="M 48 52 Q 48 58 52 65 L 52 75" fill="none" stroke="#1e40af" strokeWidth="2" />
+                                    <path d="M 28 75 Q 15 78 5 85 L 5 100" fill="none" stroke="#1e40af" strokeWidth="2" />
+                                    <path d="M 52 75 Q 65 78 75 85 L 75 100" fill="none" stroke="#1e40af" strokeWidth="2" />
+                                    <line x1="10" y1="30" x2="20" y2="30" stroke="#1e40af" strokeWidth="1.5" opacity="0.5" />
+                                    <line x1="60" y1="30" x2="70" y2="30" stroke="#1e40af" strokeWidth="1.5" opacity="0.5" />
+                                    <text x="40" y="95" textAnchor="middle" fontSize="6" fill="#6b7280">eyes ~1/3</text>
+                                  </svg>
                                 </div>
-                              </ReactCrop>
+                              )}
                             </div>
                             
                             {/* Guide toggle */}
-                            <div className="flex items-center gap-2">
-                              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={showGuide}
-                                  onChange={(e) => setShowGuide(e.target.checked)}
-                                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                                />
-                                Show position guide
-                              </label>
-                            </div>
-                            
-                            {/* Image adjustment sliders */}
-                            <div className="bg-gray-50 rounded-lg p-3 space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-700">Image Adjustments</span>
-                                {hasAdjustments && (
-                                  <button
-                                    onClick={resetEnhancements}
-                                    className="text-xs text-primary-600 hover:text-primary-700"
-                                  >
-                                    Reset
-                                  </button>
-                                )}
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-3">
-                                  <label className="text-xs text-gray-600 w-20">Brightness</label>
-                                  <input
-                                    type="range"
-                                    min="-50"
-                                    max="50"
-                                    value={brightness}
-                                    onChange={(e) => setBrightness(Number(e.target.value))}
-                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                  />
-                                  <span className="text-xs text-gray-500 w-8 text-right">{brightness}</span>
-                                </div>
-                                
-                                <div className="flex items-center gap-3">
-                                  <label className="text-xs text-gray-600 w-20">Contrast</label>
-                                  <input
-                                    type="range"
-                                    min="-50"
-                                    max="50"
-                                    value={contrast}
-                                    onChange={(e) => setContrast(Number(e.target.value))}
-                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                  />
-                                  <span className="text-xs text-gray-500 w-8 text-right">{contrast}</span>
-                                </div>
-                                
-                                <div className="flex items-center gap-3">
-                                  <label className="text-xs text-gray-600 w-20">Saturation</label>
-                                  <input
-                                    type="range"
-                                    min="-50"
-                                    max="50"
-                                    value={saturation}
-                                    onChange={(e) => setSaturation(Number(e.target.value))}
-                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                  />
-                                  <span className="text-xs text-gray-500 w-8 text-right">{saturation}</span>
-                                </div>
-                              </div>
-                            </div>
+                            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={showGuide}
+                                onChange={(e) => setShowGuide(e.target.checked)}
+                                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                              />
+                              Show position guide
+                            </label>
                             
                             <p className="text-xs text-gray-500">
                               Drag to reposition or resize the crop area. Aspect ratio is locked to 4:5.
@@ -1143,7 +1028,7 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                                   onClick={handleDoneCropping}
                                   className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 font-medium"
                                 >
-                                  Crop
+                                  Apply Crop
                                 </button>
                                 <button
                                   onClick={handleCancelCrop}
@@ -1163,6 +1048,7 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                               src={croppedPreviewUrl || newPortraitPreview || portrait.portrait_url}
                               alt={personName}
                               className="w-32 h-40 object-cover rounded"
+                              style={{ filter: hasAdjustments && !croppedPreviewUrl ? imageFilter : undefined }}
                             />
                             {!newPortraitFile && (
                               <div className="flex gap-2 items-center">
@@ -1171,16 +1057,78 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                                   className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
                                   disabled={processing === portrait.person.id}
                                 >
-                                  {croppedPreviewUrl ? 'Adjust Again' : 'Adjust Crop'}
+                                  {croppedPreviewUrl ? 'Crop Again' : 'Crop'}
                                 </button>
                                 {croppedPreviewUrl && (
                                   <span className="text-xs text-green-600 font-medium">
-                                    (crop adjusted)
+                                    (cropped)
                                   </span>
                                 )}
                               </div>
                             )}
                           </div>
+                        )}
+                      </div>
+                      
+                      {/* Image adjustment sliders - always visible in edit mode */}
+                      <div className="mb-4 bg-gray-50 rounded-lg p-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">Image Adjustments</span>
+                          {hasAdjustments && (
+                            <button
+                              onClick={resetEnhancements}
+                              className="text-xs text-primary-600 hover:text-primary-700"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <label className="text-xs text-gray-600 w-20">Brightness</label>
+                            <input
+                              type="range"
+                              min="-50"
+                              max="50"
+                              value={brightness}
+                              onChange={(e) => setBrightness(Number(e.target.value))}
+                              className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                            <span className="text-xs text-gray-500 w-8 text-right">{brightness}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-3">
+                            <label className="text-xs text-gray-600 w-20">Contrast</label>
+                            <input
+                              type="range"
+                              min="-50"
+                              max="50"
+                              value={contrast}
+                              onChange={(e) => setContrast(Number(e.target.value))}
+                              className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                            <span className="text-xs text-gray-500 w-8 text-right">{contrast}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-3">
+                            <label className="text-xs text-gray-600 w-20">Saturation</label>
+                            <input
+                              type="range"
+                              min="-50"
+                              max="50"
+                              value={saturation}
+                              onChange={(e) => setSaturation(Number(e.target.value))}
+                              className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                            <span className="text-xs text-gray-500 w-8 text-right">{saturation}</span>
+                          </div>
+                        </div>
+                        
+                        {hasAdjustments && !showCropInterface && (
+                          <p className="text-xs text-amber-600">
+                            Note: Adjustments will be applied when you crop the image.
+                          </p>
                         )}
                       </div>
 
@@ -1193,8 +1141,9 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                           accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
                           onChange={(e) => {
                             handlePortraitFileChange(e)
-                            // Reset crop when uploading new file
+                            // Reset crop and adjustments when uploading new file
                             handleCancelCrop()
+                            resetEnhancements()
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                           disabled={processing === portrait.person.id}
