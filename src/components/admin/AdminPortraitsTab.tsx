@@ -48,6 +48,16 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null)
   const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null)
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
+  
+  // Image enhancement state
+  const [showGuide, setShowGuide] = useState(true)
+  const [brightness, setBrightness] = useState(0)
+  const [contrast, setContrast] = useState(0)
+  const [saturation, setSaturation] = useState(0)
+  
+  // Computed CSS filter for real-time preview
+  const imageFilter = `brightness(${1 + brightness / 100}) contrast(${1 + contrast / 100}) saturate(${1 + saturation / 100})`
+  const hasAdjustments = brightness !== 0 || contrast !== 0 || saturation !== 0
 
   const loading = viewMode === 'pending' ? pendingLoading : approvedLoading
   const error = viewMode === 'pending' ? pendingError : approvedError
@@ -128,7 +138,7 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
     }
   }, [editPersonSearchTerm, personSearchResults])
 
-  // Reset crop state when editing changes
+  // Reset crop and enhancement state when editing changes
   useEffect(() => {
     if (!editingPortrait) {
       setShowCropInterface(false)
@@ -137,6 +147,11 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
       setCropImageUrl(null)
       setCroppedPreviewUrl(null)
       setCroppedBlob(null)
+      // Reset enhancement sliders
+      setBrightness(0)
+      setContrast(0)
+      setSaturation(0)
+      setShowGuide(true)
     }
   }, [editingPortrait])
 
@@ -159,7 +174,7 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
     setCompletedCrop(initialCrop)
   }, [])
 
-  const getCroppedImg = useCallback(async (image: HTMLImageElement, cropData: Crop): Promise<Blob> => {
+  const getCroppedImg = useCallback(async (image: HTMLImageElement, cropData: Crop, filterString?: string): Promise<Blob> => {
     if (!image.complete) {
       throw new Error('Image not loaded')
     }
@@ -198,6 +213,11 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
 
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
     ctx.imageSmoothingQuality = 'high'
+    
+    // Apply image filters if provided
+    if (filterString) {
+      ctx.filter = filterString
+    }
 
     ctx.drawImage(
       image,
@@ -226,7 +246,7 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
     })
   }, [])
 
-  const generateCroppedPreview = useCallback(async () => {
+  const generateCroppedPreview = useCallback(async (filterString?: string) => {
     if (!completedCrop || !cropImgRef.current) return null
     
     const image = cropImgRef.current
@@ -261,6 +281,11 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
     
     ctx.imageSmoothingQuality = 'high'
     
+    // Apply image filters if provided
+    if (filterString) {
+      ctx.filter = filterString
+    }
+    
     ctx.drawImage(
       image,
       Math.round(cropX),
@@ -283,19 +308,30 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
     setCompletedCrop(undefined)
     setCroppedPreviewUrl(null)
     setCroppedBlob(null)
+    // Reset enhancement sliders when starting new crop
+    setBrightness(0)
+    setContrast(0)
+    setSaturation(0)
+    setShowGuide(true)
+  }
+  
+  const resetEnhancements = () => {
+    setBrightness(0)
+    setContrast(0)
+    setSaturation(0)
   }
 
   const handleDoneCropping = async () => {
-    // Generate preview for display
-    const preview = await generateCroppedPreview()
+    // Generate preview for display (with filters applied)
+    const preview = await generateCroppedPreview(imageFilter)
     if (preview) {
       setCroppedPreviewUrl(preview)
     }
     
-    // Store the cropped blob for upload
+    // Store the cropped blob for upload (with filters applied)
     if (completedCrop && cropImgRef.current) {
       try {
-        const blob = await getCroppedImg(cropImgRef.current, completedCrop)
+        const blob = await getCroppedImg(cropImgRef.current, completedCrop, imageFilter)
         setCroppedBlob(blob)
       } catch (err) {
         console.error('Failed to generate cropped blob:', err)
@@ -923,8 +959,9 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                         </label>
                         
                         {showCropInterface && cropImageUrl ? (
-                          <div className="space-y-3">
-                            <div className="border border-gray-300 rounded-lg p-2 bg-gray-50">
+                          <div className="space-y-4">
+                            {/* Crop area with silhouette guide */}
+                            <div className="border border-gray-300 rounded-lg p-2 bg-gray-50 relative">
                               <ReactCrop
                                 crop={crop}
                                 onChange={(_, percentCrop) => setCrop(percentCrop)}
@@ -933,32 +970,191 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                                 minWidth={50}
                                 minHeight={62}
                               >
-                                <img
-                                  ref={cropImgRef}
-                                  src={cropImageUrl}
-                                  alt={personName}
-                                  onLoad={onCropImageLoad}
-                                  className="max-w-full max-h-96"
-                                  crossOrigin="anonymous"
-                                />
+                                <div className="relative">
+                                  <img
+                                    ref={cropImgRef}
+                                    src={cropImageUrl}
+                                    alt={personName}
+                                    onLoad={onCropImageLoad}
+                                    className="max-w-full max-h-96"
+                                    crossOrigin="anonymous"
+                                    style={{ filter: imageFilter }}
+                                  />
+                                  {/* Silhouette guide overlay - shows inside crop area */}
+                                  {showGuide && crop && (
+                                    <div
+                                      className="absolute pointer-events-none"
+                                      style={{
+                                        left: `${crop.x}%`,
+                                        top: `${crop.y}%`,
+                                        width: `${crop.width}%`,
+                                        height: `${crop.height}%`,
+                                      }}
+                                    >
+                                      <svg
+                                        viewBox="0 0 80 100"
+                                        className="w-full h-full"
+                                        style={{ opacity: 0.35 }}
+                                      >
+                                        {/* Head oval */}
+                                        <ellipse
+                                          cx="40"
+                                          cy="32"
+                                          rx="18"
+                                          ry="22"
+                                          fill="none"
+                                          stroke="#1e40af"
+                                          strokeWidth="1.5"
+                                          strokeDasharray="3,2"
+                                        />
+                                        {/* Neck */}
+                                        <path
+                                          d="M 32 52 Q 32 58 28 65 L 28 75"
+                                          fill="none"
+                                          stroke="#1e40af"
+                                          strokeWidth="1.5"
+                                          strokeDasharray="3,2"
+                                        />
+                                        <path
+                                          d="M 48 52 Q 48 58 52 65 L 52 75"
+                                          fill="none"
+                                          stroke="#1e40af"
+                                          strokeWidth="1.5"
+                                          strokeDasharray="3,2"
+                                        />
+                                        {/* Shoulders */}
+                                        <path
+                                          d="M 28 75 Q 15 78 5 85 L 5 100"
+                                          fill="none"
+                                          stroke="#1e40af"
+                                          strokeWidth="1.5"
+                                          strokeDasharray="3,2"
+                                        />
+                                        <path
+                                          d="M 52 75 Q 65 78 75 85 L 75 100"
+                                          fill="none"
+                                          stroke="#1e40af"
+                                          strokeWidth="1.5"
+                                          strokeDasharray="3,2"
+                                        />
+                                        {/* Eye line indicator */}
+                                        <line
+                                          x1="15"
+                                          y1="30"
+                                          x2="25"
+                                          y2="30"
+                                          stroke="#1e40af"
+                                          strokeWidth="1"
+                                          opacity="0.6"
+                                        />
+                                        <line
+                                          x1="55"
+                                          y1="30"
+                                          x2="65"
+                                          y2="30"
+                                          stroke="#1e40af"
+                                          strokeWidth="1"
+                                          opacity="0.6"
+                                        />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
                               </ReactCrop>
                             </div>
+                            
+                            {/* Guide toggle */}
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={showGuide}
+                                  onChange={(e) => setShowGuide(e.target.checked)}
+                                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                />
+                                Show position guide
+                              </label>
+                            </div>
+                            
+                            {/* Image adjustment sliders */}
+                            <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700">Image Adjustments</span>
+                                {hasAdjustments && (
+                                  <button
+                                    onClick={resetEnhancements}
+                                    className="text-xs text-primary-600 hover:text-primary-700"
+                                  >
+                                    Reset
+                                  </button>
+                                )}
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-3">
+                                  <label className="text-xs text-gray-600 w-20">Brightness</label>
+                                  <input
+                                    type="range"
+                                    min="-50"
+                                    max="50"
+                                    value={brightness}
+                                    onChange={(e) => setBrightness(Number(e.target.value))}
+                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                  />
+                                  <span className="text-xs text-gray-500 w-8 text-right">{brightness}</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                  <label className="text-xs text-gray-600 w-20">Contrast</label>
+                                  <input
+                                    type="range"
+                                    min="-50"
+                                    max="50"
+                                    value={contrast}
+                                    onChange={(e) => setContrast(Number(e.target.value))}
+                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                  />
+                                  <span className="text-xs text-gray-500 w-8 text-right">{contrast}</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                  <label className="text-xs text-gray-600 w-20">Saturation</label>
+                                  <input
+                                    type="range"
+                                    min="-50"
+                                    max="50"
+                                    value={saturation}
+                                    onChange={(e) => setSaturation(Number(e.target.value))}
+                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                  />
+                                  <span className="text-xs text-gray-500 w-8 text-right">{saturation}</span>
+                                </div>
+                              </div>
+                            </div>
+                            
                             <p className="text-xs text-gray-500">
                               Drag to reposition or resize the crop area. Aspect ratio is locked to 4:5.
                             </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleDoneCropping}
-                                className="px-3 py-1.5 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
-                              >
-                                Done Adjusting
-                              </button>
-                              <button
-                                onClick={handleCancelCrop}
-                                className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
-                              >
-                                Cancel Crop
-                              </button>
+                            
+                            {/* Action buttons */}
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleDoneCropping}
+                                  className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 font-medium"
+                                >
+                                  Crop
+                                </button>
+                                <button
+                                  onClick={handleCancelCrop}
+                                  className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                              <p className="text-xs text-amber-600 font-medium">
+                                ⚠️ Cropping cannot be undone. The original image will be replaced.
+                              </p>
                             </div>
                           </div>
                         ) : (
