@@ -15,10 +15,14 @@ export function usePeopleSearch(searchTerm: string) {
     const searchPeople = async () => {
       setLoading(true)
       try {
+        // Split search into words and join with wildcards for partial matching
+        // "Gary Hill" becomes "%Gary%Hill%" to match "Gary R. Hill"
+        const searchPattern = searchTerm.trim().split(/\s+/).join('%')
+        
         const { data, error } = await supabase
           .from('people')
           .select('*')
-          .or(`full_name.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%`)
+          .or(`full_name.ilike.%${searchPattern}%,display_name.ilike.%${searchPattern}%`)
           .eq('redacted', false)
           .limit(10)
           .order('full_name')
