@@ -394,8 +394,18 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
 
     setProcessing('add-new')
     try {
-      const maxNum = getMaxPresidencyNumber()
-      const newPresidencyNum = maxNum + 1
+      // Get the selected position to check its type
+      const selectedPosition = availablePositions.find(p => p.id === addNewPositionId)
+      
+      // For president/counselor positions, create new presidency number
+      // For member/other positions (like High Councilor), use current presidency
+      let presidencyNum: number
+      if (selectedPosition?.position_type === 'president') {
+        presidencyNum = getMaxPresidencyNumber() + 1
+      } else {
+        // Use current presidency number for non-president callings
+        presidencyNum = currentPresidency || getMaxPresidencyNumber()
+      }
 
       const { data: newCalling, error: insertError } = await supabase
         .from('callings')
@@ -403,7 +413,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
           person_id: addNewPersonId,
           organization_id: selectedOrgId,
           position_id: addNewPositionId,
-          presidency_number: newPresidencyNum,
+          presidency_number: presidencyNum,
           sustained_date: addNewSustainedDate,
           sustained_precision: 'exact',
         })
@@ -422,7 +432,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
             person_id: addNewPersonId,
             organization_id: selectedOrgId,
             position_id: addNewPositionId,
-            presidency_number: newPresidencyNum,
+            presidency_number: presidencyNum,
             sustained_date: addNewSustainedDate,
             sustained_precision: 'exact',
           },
@@ -1207,9 +1217,12 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">#</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Presidency #</label>
                   <div className="px-3 py-2 bg-gray-100 rounded text-gray-700">
-                    Will be assigned #{getMaxPresidencyNumber() + 1}
+                    {availablePositions.find(p => p.id === addNewPositionId)?.position_type === 'president'
+                      ? `Will start new presidency #${getMaxPresidencyNumber() + 1}`
+                      : `Will be assigned to current presidency #${currentPresidency || getMaxPresidencyNumber()}`
+                    }
                   </div>
                 </div>
               </>
