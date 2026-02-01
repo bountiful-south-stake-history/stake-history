@@ -46,6 +46,8 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
   const [completedCrop, setCompletedCrop] = useState<Crop>()
   const cropImgRef = useRef<HTMLImageElement>(null)
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null)
+  const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null)
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
 
   const loading = viewMode === 'pending' ? pendingLoading : approvedLoading
   const error = viewMode === 'pending' ? pendingError : approvedError
@@ -133,6 +135,8 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
       setCrop(undefined)
       setCompletedCrop(undefined)
       setCropImageUrl(null)
+      setCroppedPreviewUrl(null)
+      setCroppedBlob(null)
     }
   }, [editingPortrait])
 
@@ -222,11 +226,83 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
     })
   }, [])
 
+  const generateCroppedPreview = useCallback(async () => {
+    if (!completedCrop || !cropImgRef.current) return null
+    
+    const image = cropImgRef.current
+    if (!image.complete) return null
+    
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    
+    const naturalWidth = image.naturalWidth
+    const naturalHeight = image.naturalHeight
+    
+    let cropX: number, cropY: number, cropWidth: number, cropHeight: number
+    
+    if (completedCrop.unit === '%') {
+      cropX = (completedCrop.x / 100) * naturalWidth
+      cropY = (completedCrop.y / 100) * naturalHeight
+      cropWidth = (completedCrop.width / 100) * naturalWidth
+      cropHeight = (completedCrop.height / 100) * naturalHeight
+    } else {
+      const scaleX = naturalWidth / image.width
+      const scaleY = naturalHeight / image.height
+      cropX = completedCrop.x * scaleX
+      cropY = completedCrop.y * scaleY
+      cropWidth = completedCrop.width * scaleX
+      cropHeight = completedCrop.height * scaleY
+    }
+    
+    // Preview size (4:5 aspect ratio)
+    canvas.width = 160
+    canvas.height = 200
+    
+    ctx.imageSmoothingQuality = 'high'
+    
+    ctx.drawImage(
+      image,
+      Math.round(cropX),
+      Math.round(cropY),
+      Math.round(cropWidth),
+      Math.round(cropHeight),
+      0,
+      0,
+      160,
+      200
+    )
+    
+    return canvas.toDataURL('image/jpeg', 0.9)
+  }, [completedCrop])
+
   const handleStartCrop = (portraitUrl: string) => {
     setCropImageUrl(portraitUrl)
     setShowCropInterface(true)
     setCrop(undefined)
     setCompletedCrop(undefined)
+    setCroppedPreviewUrl(null)
+    setCroppedBlob(null)
+  }
+
+  const handleDoneCropping = async () => {
+    // Generate preview for display
+    const preview = await generateCroppedPreview()
+    if (preview) {
+      setCroppedPreviewUrl(preview)
+    }
+    
+    // Store the cropped blob for upload
+    if (completedCrop && cropImgRef.current) {
+      try {
+        const blob = await getCroppedImg(cropImgRef.current, completedCrop)
+        setCroppedBlob(blob)
+      } catch (err) {
+        console.error('Failed to generate cropped blob:', err)
+      }
+    }
+    
+    setShowCropInterface(false)
   }
 
   const handleCancelCrop = () => {
@@ -234,6 +310,8 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
     setCrop(undefined)
     setCompletedCrop(undefined)
     setCropImageUrl(null)
+    setCroppedPreviewUrl(null)
+    setCroppedBlob(null)
   }
 
   const handleApprove = async (submissionId: string) => {
@@ -394,9 +472,8 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
       const oldPortraitUrl = portrait.portrait_url
       let fileToUpload: Blob | File | null = newPortraitFile
 
-      // If crop was adjusted, process the cropped image
-      if (completedCrop && cropImgRef.current && showCropInterface) {
-        const croppedBlob = await getCroppedImg(cropImgRef.current, completedCrop)
+      // If crop was adjusted, use the stored cropped blob
+      if (croppedBlob && !newPortraitFile) {
         // Compress the cropped image
         const croppedFile = new File([croppedBlob], 'cropped.jpg', { type: 'image/jpeg' })
         fileToUpload = await compressImage(croppedFile, {
@@ -871,7 +948,7 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                             </p>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => setShowCropInterface(false)}
+                                onClick={handleDoneCropping}
                                 className="px-3 py-1.5 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
                               >
                                 Done Adjusting
@@ -887,18 +964,25 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                         ) : (
                           <div className="space-y-2">
                             <img
-                              src={newPortraitPreview || portrait.portrait_url}
+                              src={croppedPreviewUrl || newPortraitPreview || portrait.portrait_url}
                               alt={personName}
                               className="w-32 h-40 object-cover rounded"
                             />
                             {!newPortraitFile && (
-                              <button
-                                onClick={() => handleStartCrop(portrait.portrait_url)}
-                                className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
-                                disabled={processing === portrait.person.id}
-                              >
-                                Adjust Crop
-                              </button>
+                              <div className="flex gap-2 items-center">
+                                <button
+                                  onClick={() => handleStartCrop(portrait.portrait_url)}
+                                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                                  disabled={processing === portrait.person.id}
+                                >
+                                  {croppedPreviewUrl ? 'Adjust Again' : 'Adjust Crop'}
+                                </button>
+                                {croppedPreviewUrl && (
+                                  <span className="text-xs text-green-600 font-medium">
+                                    (crop adjusted)
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
