@@ -288,6 +288,7 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sustained</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Released</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Presidency #</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -353,6 +354,15 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
                             </div>
                           </td>
                           <td className="px-4 py-3">
+                            <input
+                              type="text"
+                              value={editData.notes}
+                              onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
+                              placeholder="e.g., Hill Presidency"
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleSave(calling.id)}
@@ -388,6 +398,7 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
                             {calling.released_date ? new Date(calling.released_date).toLocaleDateString() : 'Current'}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600">{calling.presidency_number || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500 italic">{calling.notes || '-'}</td>
                           <td className="px-4 py-3">
                             <div className="flex gap-2">
                               <button
@@ -486,6 +497,16 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
                           </button>
                         </div>
                       </div>
+                      <div className="mb-3">
+                        <label className="text-xs text-gray-500 uppercase">Notes</label>
+                        <input
+                          type="text"
+                          value={editData.notes}
+                          onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
+                          placeholder="e.g., Hill Presidency"
+                          className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleSave(calling.id)}
@@ -528,9 +549,13 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
                           {calling.released_date ? new Date(calling.released_date).toLocaleDateString() : 'Current'}
                         </div>
                       </div>
-                      <div className="mb-4">
+                      <div className="mb-2">
                         <span className="text-xs font-medium text-gray-500 uppercase">Presidency #</span>
                         <div className="mt-1 text-sm text-gray-900">{calling.presidency_number || '-'}</div>
+                      </div>
+                      <div className="mb-4">
+                        <span className="text-xs font-medium text-gray-500 uppercase">Notes</span>
+                        <div className="mt-1 text-sm text-gray-500 italic">{calling.notes || '-'}</div>
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         <button
