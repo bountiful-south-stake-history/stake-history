@@ -28,7 +28,7 @@ export function AdminDashboard() {
 
   const toolsTabs: { id: ToolsTab; baseLabel: string }[] = [
     { id: 'people', baseLabel: 'Fix Names' },
-    { id: 'callings', baseLabel: 'Fix Dates' },
+    { id: 'callings', baseLabel: 'Fix All Else' },
     { id: 'transitions', baseLabel: 'Manage Callings' },
     { id: 'users', baseLabel: 'Users' },
   ]
