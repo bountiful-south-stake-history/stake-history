@@ -251,7 +251,12 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
         if (p.position_type === 'president') {
           positionMap['president'] = p.id
         } else if (p.position_type === 'counselor') {
-          positionMap['counselor'] = p.id
+          const titleLower = p.title.toLowerCase()
+          if (titleLower.includes('1st') || titleLower.includes('first')) {
+            positionMap['counselor1'] = p.id
+          } else if (titleLower.includes('2nd') || titleLower.includes('second')) {
+            positionMap['counselor2'] = p.id
+          }
         }
       })
 
@@ -268,7 +273,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
         presidencyNum = currentBishop.presidency_number ?? currentPresidency
       }
 
-      const positionId = addCounselorPosition === 'president' ? positionMap['president'] : positionMap['counselor']
+      const positionId = positionMap[addCounselorPosition]
 
       const { data: newCalling, error: insertError } = await supabase
         .from('callings')
