@@ -1047,15 +1047,15 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                               {showCropInterface && cropImageUrl ? (
                                 <div className="space-y-4">
                                   <div className="border border-gray-300 rounded-lg p-2 bg-gray-50">
-                                    <div className="relative">
-                                      <ReactCrop
-                                        crop={crop}
-                                        onChange={(_, percentCrop) => setCrop(percentCrop)}
-                                        onComplete={(_, percentCrop) => setCompletedCrop(percentCrop)}
-                                        aspect={ASPECT_RATIO}
-                                        minWidth={50}
-                                        minHeight={62}
-                                      >
+                                    <ReactCrop
+                                      crop={crop}
+                                      onChange={(_, percentCrop) => setCrop(percentCrop)}
+                                      onComplete={(_, percentCrop) => setCompletedCrop(percentCrop)}
+                                      aspect={ASPECT_RATIO}
+                                      minWidth={50}
+                                      minHeight={62}
+                                    >
+                                      <div className="relative inline-block">
                                         <img
                                           ref={cropImgRef}
                                           src={cropImageUrl}
@@ -1065,48 +1065,48 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                                           crossOrigin="anonymous"
                                           style={{ filter: imageFilter }}
                                         />
-                                      </ReactCrop>
-                                      {/* Oval head guide overlay - positioned inside crop area */}
-                                      {showGuide && crop && (
-                                        <div
-                                          className="absolute pointer-events-none"
-                                          style={{
-                                            left: `${crop.x}%`,
-                                            top: `${crop.y}%`,
-                                            width: `${crop.width}%`,
-                                            height: `${crop.height}%`,
-                                          }}
-                                        >
-                                          <svg
-                                            viewBox="0 0 80 100"
-                                            className="w-full h-full"
-                                            preserveAspectRatio="none"
+                                        {/* Oval head guide overlay - positioned inside crop area */}
+                                        {showGuide && crop && (
+                                          <div
+                                            className="absolute pointer-events-none"
+                                            style={{
+                                              left: `${crop.x}%`,
+                                              top: `${crop.y}%`,
+                                              width: `${crop.width}%`,
+                                              height: `${crop.height}%`,
+                                            }}
                                           >
-                                            {/* Head oval - positioned in upper portion */}
-                                            <ellipse
-                                              cx="40"
-                                              cy="35"
-                                              rx="22"
-                                              ry="28"
-                                              fill="none"
-                                              stroke="rgba(59, 130, 246, 0.5)"
-                                              strokeWidth="1.5"
-                                              strokeDasharray="4,3"
-                                            />
-                                            {/* Eye line - at ~1/3 from top of oval */}
-                                            <line
-                                              x1="12"
-                                              y1="32"
-                                              x2="68"
-                                              y2="32"
-                                              stroke="rgba(59, 130, 246, 0.4)"
-                                              strokeWidth="1"
-                                              strokeDasharray="6,4"
-                                            />
-                                          </svg>
-                                        </div>
-                                      )}
-                                    </div>
+                                            <svg
+                                              viewBox="0 0 80 100"
+                                              className="w-full h-full"
+                                              preserveAspectRatio="none"
+                                            >
+                                              {/* Head oval - positioned in upper portion */}
+                                              <ellipse
+                                                cx="40"
+                                                cy="35"
+                                                rx="22"
+                                                ry="28"
+                                                fill="none"
+                                                stroke="rgba(59, 130, 246, 0.5)"
+                                                strokeWidth="1.5"
+                                                strokeDasharray="4,3"
+                                              />
+                                              {/* Eye line - at ~1/3 from top of oval */}
+                                              <line
+                                                x1="12"
+                                                y1="32"
+                                                x2="68"
+                                                y2="32"
+                                                stroke="rgba(59, 130, 246, 0.4)"
+                                                strokeWidth="1"
+                                                strokeDasharray="6,4"
+                                              />
+                                            </svg>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </ReactCrop>
                                   </div>
                                   <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                                     <input type="checkbox" checked={showGuide} onChange={(e) => setShowGuide(e.target.checked)} className="rounded border-gray-300 text-primary-600" />
