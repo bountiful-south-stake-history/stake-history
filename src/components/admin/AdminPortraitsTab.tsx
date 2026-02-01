@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop'
+import 'react-image-crop/dist/ReactCrop.css'
 import { supabase } from '../../lib/supabase'
 import { usePendingPortraits } from '../../hooks/usePendingPortraits'
 import { useApprovedPortraits } from '../../hooks/useApprovedPortraits'
@@ -8,6 +10,8 @@ import { useAuth } from '../../hooks/useAuth'
 import type { Person } from '../../lib/types'
 import compressImage from 'browser-image-compression'
 import { PortraitLightbox } from '../people/PortraitLightbox'
+
+const ASPECT_RATIO = 4 / 5
 
 interface AdminPortraitsTabProps {
   onActionComplete?: () => void
@@ -35,6 +39,13 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<'approved-desc' | 'approved-asc' | 'name-asc' | 'name-desc'>('approved-desc')
+  
+  // Crop-related state
+  const [showCropInterface, setShowCropInterface] = useState(false)
+  const [crop, setCrop] = useState<Crop>()
+  const [completedCrop, setCompletedCrop] = useState<Crop>()
+  const cropImgRef = useRef<HTMLImageElement>(null)
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null)
 
   const loading = viewMode === 'pending' ? pendingLoading : approvedLoading
   const error = viewMode === 'pending' ? pendingError : approvedError
@@ -114,6 +125,116 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
       setShowPersonDropdown(true)
     }
   }, [editPersonSearchTerm, personSearchResults])
+
+  // Reset crop state when editing changes
+  useEffect(() => {
+    if (!editingPortrait) {
+      setShowCropInterface(false)
+      setCrop(undefined)
+      setCompletedCrop(undefined)
+      setCropImageUrl(null)
+    }
+  }, [editingPortrait])
+
+  const onCropImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget
+    const initialCrop = centerCrop(
+      makeAspectCrop(
+        {
+          unit: '%',
+          width: 90,
+        },
+        ASPECT_RATIO,
+        naturalWidth,
+        naturalHeight
+      ),
+      naturalWidth,
+      naturalHeight
+    )
+    setCrop(initialCrop)
+    setCompletedCrop(initialCrop)
+  }, [])
+
+  const getCroppedImg = useCallback(async (image: HTMLImageElement, cropData: Crop): Promise<Blob> => {
+    if (!image.complete) {
+      throw new Error('Image not loaded')
+    }
+
+    if (!cropData || cropData.x === undefined || cropData.y === undefined || !cropData.width || !cropData.height) {
+      throw new Error('Invalid crop coordinates')
+    }
+
+    const canvas = document.createElement('canvas')
+    const naturalWidth = image.naturalWidth
+    const naturalHeight = image.naturalHeight
+    const pixelRatio = window.devicePixelRatio
+
+    let cropX: number, cropY: number, cropWidth: number, cropHeight: number
+
+    if (cropData.unit === '%') {
+      cropX = (cropData.x / 100) * naturalWidth
+      cropY = (cropData.y / 100) * naturalHeight
+      cropWidth = (cropData.width / 100) * naturalWidth
+      cropHeight = (cropData.height / 100) * naturalHeight
+    } else {
+      // Pixel-based crop - need to scale from displayed size to natural size
+      const scaleX = naturalWidth / image.width
+      const scaleY = naturalHeight / image.height
+      cropX = cropData.x * scaleX
+      cropY = cropData.y * scaleY
+      cropWidth = cropData.width * scaleX
+      cropHeight = cropData.height * scaleY
+    }
+
+    canvas.width = Math.round(cropWidth * pixelRatio)
+    canvas.height = Math.round(cropHeight * pixelRatio)
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('No 2d context')
+
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+    ctx.imageSmoothingQuality = 'high'
+
+    ctx.drawImage(
+      image,
+      Math.round(cropX),
+      Math.round(cropY),
+      Math.round(cropWidth),
+      Math.round(cropHeight),
+      0,
+      0,
+      cropWidth,
+      cropHeight
+    )
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('Canvas is empty'))
+            return
+          }
+          resolve(blob)
+        },
+        'image/jpeg',
+        0.95
+      )
+    })
+  }, [])
+
+  const handleStartCrop = (portraitUrl: string) => {
+    setCropImageUrl(portraitUrl)
+    setShowCropInterface(true)
+    setCrop(undefined)
+    setCompletedCrop(undefined)
+  }
+
+  const handleCancelCrop = () => {
+    setShowCropInterface(false)
+    setCrop(undefined)
+    setCompletedCrop(undefined)
+    setCropImageUrl(null)
+  }
 
   const handleApprove = async (submissionId: string) => {
     setProcessing(submissionId)
@@ -271,15 +392,28 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
 
       let newPortraitUrl = portrait.portrait_url
       const oldPortraitUrl = portrait.portrait_url
+      let fileToUpload: Blob | File | null = newPortraitFile
 
-      if (newPortraitFile) {
+      // If crop was adjusted, process the cropped image
+      if (completedCrop && cropImgRef.current && showCropInterface) {
+        const croppedBlob = await getCroppedImg(cropImgRef.current, completedCrop)
+        // Compress the cropped image
+        const croppedFile = new File([croppedBlob], 'cropped.jpg', { type: 'image/jpeg' })
+        fileToUpload = await compressImage(croppedFile, {
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 800,
+          useWebWorker: true,
+        })
+      }
+
+      if (fileToUpload) {
         const personId = editPerson.id
-        const fileExt = newPortraitFile.name.split('.').pop() || 'jpg'
-        const newPath = `portraits/approved/${personId}/${personId}.${fileExt}`
+        const timestamp = Date.now()
+        const newPath = `portraits/approved/${personId}/${personId}_${timestamp}.jpg`
 
         const { error: uploadError } = await supabase.storage
           .from('portraits')
-          .upload(newPath, newPortraitFile, { upsert: true })
+          .upload(newPath, fileToUpload, { upsert: true })
 
         if (uploadError) throw uploadError
 
@@ -289,8 +423,10 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
 
         newPortraitUrl = publicUrl
 
-        const oldPath = oldPortraitUrl.split('/').slice(-2).join('/')
-        if (oldPath.startsWith('portraits/approved/')) {
+        // Extract storage path from old URL and delete old file
+        const urlParts = oldPortraitUrl.split('/storage/v1/object/public/portraits/')
+        if (urlParts.length > 1) {
+          const oldPath = urlParts[1]
           await supabase.storage.from('portraits').remove([oldPath])
         }
       }
@@ -708,11 +844,64 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Current Portrait
                         </label>
-                        <img
-                          src={newPortraitPreview || portrait.portrait_url}
-                          alt={personName}
-                          className="w-32 h-40 object-cover rounded"
-                        />
+                        
+                        {showCropInterface && cropImageUrl ? (
+                          <div className="space-y-3">
+                            <div className="border border-gray-300 rounded-lg p-2 bg-gray-50">
+                              <ReactCrop
+                                crop={crop}
+                                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                                onComplete={(_, percentCrop) => setCompletedCrop(percentCrop)}
+                                aspect={ASPECT_RATIO}
+                                minWidth={50}
+                                minHeight={62}
+                              >
+                                <img
+                                  ref={cropImgRef}
+                                  src={cropImageUrl}
+                                  alt={personName}
+                                  onLoad={onCropImageLoad}
+                                  className="max-w-full max-h-96"
+                                  crossOrigin="anonymous"
+                                />
+                              </ReactCrop>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Drag to reposition or resize the crop area. Aspect ratio is locked to 4:5.
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setShowCropInterface(false)}
+                                className="px-3 py-1.5 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
+                              >
+                                Done Adjusting
+                              </button>
+                              <button
+                                onClick={handleCancelCrop}
+                                className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                              >
+                                Cancel Crop
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <img
+                              src={newPortraitPreview || portrait.portrait_url}
+                              alt={personName}
+                              className="w-32 h-40 object-cover rounded"
+                            />
+                            {!newPortraitFile && (
+                              <button
+                                onClick={() => handleStartCrop(portrait.portrait_url)}
+                                className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                                disabled={processing === portrait.person.id}
+                              >
+                                Adjust Crop
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="mb-4">
@@ -722,7 +911,11 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                         <input
                           type="file"
                           accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
-                          onChange={handlePortraitFileChange}
+                          onChange={(e) => {
+                            handlePortraitFileChange(e)
+                            // Reset crop when uploading new file
+                            handleCancelCrop()
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                           disabled={processing === portrait.person.id}
                         />
