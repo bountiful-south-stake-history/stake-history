@@ -1,9 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useOrganizationCallings } from '../../hooks/useOrganizationCallings'
 import { useOrganizations } from '../../hooks/useOrganizations'
 import { useAuth } from '../../hooks/useAuth'
+
+interface Position {
+  id: string
+  title: string
+  position_type: string
+  sort_order: number
+}
 
 interface AdminCallingsTabProps {
   onActionComplete?: () => void
@@ -26,8 +33,25 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
     sustained_date: '',
     released_date: '',
     presidency_number: '',
+    position_id: '',
     notes: '',
   })
+  const [availablePositions, setAvailablePositions] = useState<Position[]>([])
+
+  // Fetch positions when component mounts
+  useEffect(() => {
+    const fetchPositions = async () => {
+      const { data, error } = await supabase
+        .from('positions')
+        .select('*')
+        .order('sort_order', { ascending: true })
+      
+      if (!error && data) {
+        setAvailablePositions(data)
+      }
+    }
+    fetchPositions()
+  }, [])
 
   const filteredOrganizations = organizations.filter(
     (org) => org.name !== 'Bountiful Utah South Stake'
@@ -41,6 +65,7 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
       sustained_date: calling.sustained_date || '',
       released_date: calling.released_date || '',
       presidency_number: calling.presidency_number?.toString() || '',
+      position_id: calling.position_id || '',
       notes: calling.notes || '',
     })
   }
@@ -51,17 +76,31 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
       sustained_date: '',
       released_date: '',
       presidency_number: '',
+      position_id: '',
       notes: '',
     })
   }
 
   const handleSave = async (callingId: string) => {
+    const calling = callings.find((c) => c.id === callingId)
+    if (!calling) return
+
     setProcessing(callingId)
     try {
+      const oldValues = {
+        sustained_date: calling.sustained_date,
+        released_date: calling.released_date,
+        position_id: calling.position_id,
+        notes: calling.notes,
+      }
+
       const updateData: any = {}
       
       if (editData.sustained_date) updateData.sustained_date = editData.sustained_date
       if (editData.released_date) updateData.released_date = editData.released_date || null
+      if (editData.position_id && editData.position_id !== calling.position_id) {
+        updateData.position_id = editData.position_id
+      }
       // Presidency number is NOT updated here - it's protected
       if (editData.notes !== undefined) updateData.notes = editData.notes.trim() || null
 
@@ -71,6 +110,19 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
         .eq('id', callingId)
 
       if (updateError) throw updateError
+
+      // Log audit if position was changed
+      if (updateData.position_id && user) {
+        await supabase.from('audit_log').insert({
+          table_name: 'callings',
+          record_id: callingId,
+          action: 'change_position',
+          old_values: oldValues,
+          new_values: { ...oldValues, ...updateData },
+          performed_by: user.id,
+          performed_at: new Date().toISOString(),
+        })
+      }
       
       setEditingId(null)
       onActionComplete?.()
@@ -254,7 +306,19 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
                               {calling.person?.display_name || calling.person?.full_name}
                             </Link>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{calling.position?.title}</td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={editData.position_id}
+                              onChange={(e) => setEditData({ ...editData, position_id: e.target.value })}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            >
+                              {availablePositions.map((pos) => (
+                                <option key={pos.id} value={pos.id}>
+                                  {pos.title}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
                           <td className="px-4 py-3">
                             <input
                               type="date"
@@ -374,7 +438,17 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
                       </div>
                       <div className="mb-3">
                         <label className="text-xs text-gray-500 uppercase">Position</label>
-                        <div className="mt-1 text-sm text-gray-900">{calling.position?.title}</div>
+                        <select
+                          value={editData.position_id}
+                          onChange={(e) => setEditData({ ...editData, position_id: e.target.value })}
+                          className="w-full mt-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                        >
+                          {availablePositions.map((pos) => (
+                            <option key={pos.id} value={pos.id}>
+                              {pos.title}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div className="mb-3">
                         <label className="text-xs text-gray-500 uppercase">Sustained</label>

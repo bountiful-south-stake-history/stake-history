@@ -305,10 +305,20 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
           positionMap['president'] = p.id
         } else if (p.position_type === 'counselor') {
           const titleLower = p.title.toLowerCase()
-          if (titleLower.includes('1st') || titleLower.includes('first')) {
-            positionMap['counselor1'] = p.id
-          } else if (titleLower.includes('2nd') || titleLower.includes('second')) {
-            positionMap['counselor2'] = p.id
+          const is1st = titleLower.includes('1st') || titleLower.includes('first')
+          const is2nd = titleLower.includes('2nd') || titleLower.includes('second')
+          const isCounselor = titleLower.includes('counselor')
+          
+          // Prefer positions with "counselor" in the title to match the dropdown labels
+          if (is1st) {
+            if (isCounselor || !positionMap['counselor1']) {
+              positionMap['counselor1'] = p.id
+            }
+          }
+          if (is2nd) {
+            if (isCounselor || !positionMap['counselor2']) {
+              positionMap['counselor2'] = p.id
+            }
           }
         }
       })
