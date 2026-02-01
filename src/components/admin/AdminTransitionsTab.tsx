@@ -30,6 +30,11 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
   const [showAddPersonModal, setShowAddPersonModal] = useState<string | false>(false)
 
   const [releaseDate, setReleaseDate] = useState('')
+  const [addReplacement, setAddReplacement] = useState(false)
+  const [replacementPersonId, setReplacementPersonId] = useState<string | null>(null)
+  const [replacementPersonName, setReplacementPersonName] = useState('')
+  const [replacementSearchTerm, setReplacementSearchTerm] = useState('')
+  const [replacementSustainedDate, setReplacementSustainedDate] = useState('')
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set())
   const [sustainedDate, setSustainedDate] = useState('')
   const [newLeadership, setNewLeadership] = useState<NewLeadershipMember[]>([
@@ -179,6 +184,11 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
       return
     }
 
+    if (addReplacement && (!replacementPersonId || !replacementSustainedDate)) {
+      alert('Please select a replacement person and enter a sustained date')
+      return
+    }
+
     setProcessing(showReleaseModal.id)
     try {
       const oldValues = {
@@ -191,6 +201,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
         notes: showReleaseModal.notes,
       }
 
+      // Release the current person
       const { error: updateError } = await supabase
         .from('callings')
         .update({
@@ -213,8 +224,50 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
         })
       }
 
+      // Add replacement if requested
+      if (addReplacement && replacementPersonId && replacementSustainedDate) {
+        const { data: newCalling, error: insertError } = await supabase
+          .from('callings')
+          .insert({
+            person_id: replacementPersonId,
+            organization_id: showReleaseModal.organization_id,
+            position_id: showReleaseModal.position_id,
+            presidency_number: showReleaseModal.presidency_number,
+            sustained_date: replacementSustainedDate,
+            sustained_precision: 'exact',
+          })
+          .select()
+          .single()
+
+        if (insertError) throw insertError
+
+        if (user && newCalling) {
+          await supabase.from('audit_log').insert({
+            table_name: 'callings',
+            record_id: newCalling.id,
+            action: 'add_calling',
+            old_values: null,
+            new_values: {
+              person_id: replacementPersonId,
+              organization_id: showReleaseModal.organization_id,
+              position_id: showReleaseModal.position_id,
+              presidency_number: showReleaseModal.presidency_number,
+              sustained_date: replacementSustainedDate,
+              sustained_precision: 'exact',
+            },
+            performed_by: user.id,
+            performed_at: new Date().toISOString(),
+          })
+        }
+      }
+
       setShowReleaseModal(null)
       setReleaseDate('')
+      setAddReplacement(false)
+      setReplacementPersonId(null)
+      setReplacementPersonName('')
+      setReplacementSearchTerm('')
+      setReplacementSustainedDate('')
       onActionComplete?.()
       window.location.reload()
     } catch (err) {
@@ -419,7 +472,10 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
 
       if (error) throw error
 
-      if (showAddCounselorModal) {
+      if (showAddPersonModal === 'replacement') {
+        setReplacementPersonId(data.id)
+        setReplacementPersonName(data.display_name || data.full_name)
+      } else if (showAddCounselorModal) {
         setAddCounselorPersonId(data.id)
         setAddCounselorPersonName(data.display_name || data.full_name)
       } else if (showAddNewModal) {
@@ -874,7 +930,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
 
       {showReleaseModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-gray-900 mb-4">
               Release {showReleaseModal.person?.display_name || showReleaseModal.person?.full_name}
             </h2>
@@ -889,15 +945,86 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
               <input
                 type="date"
                 value={releaseDate}
-                onChange={(e) => setReleaseDate(e.target.value)}
+                onChange={(e) => {
+                  setReleaseDate(e.target.value)
+                  if (!replacementSustainedDate) {
+                    setReplacementSustainedDate(e.target.value)
+                  }
+                }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
-            <div className="flex gap-2 justify-end">
+
+            {/* Add Replacement Section */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={addReplacement}
+                  onChange={(e) => {
+                    setAddReplacement(e.target.checked)
+                    if (e.target.checked && !replacementSustainedDate && releaseDate) {
+                      setReplacementSustainedDate(releaseDate)
+                    }
+                  }}
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm font-medium text-gray-700">Add replacement now</span>
+              </label>
+
+              {addReplacement && (
+                <div className="mt-4 space-y-4 pl-6 border-l-2 border-primary-200">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Position
+                    </label>
+                    <div className="px-3 py-2 bg-gray-100 rounded text-gray-700 text-sm">
+                      {showReleaseModal.position?.title}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Same position as released calling
+                    </p>
+                  </div>
+
+                  <div>
+                    <PersonSelector
+                      label="Replacement"
+                      value={replacementPersonName}
+                      searchTerm={replacementSearchTerm}
+                      onSearchChange={setReplacementSearchTerm}
+                      onPersonSelect={(person) => {
+                        setReplacementPersonId(person?.id || null)
+                        setReplacementPersonName(person ? person.display_name || person.full_name : '')
+                      }}
+                      onAddNew={() => setShowAddPersonModal('replacement')}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sustained Date
+                    </label>
+                    <input
+                      type="date"
+                      value={replacementSustainedDate}
+                      onChange={(e) => setReplacementSustainedDate(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end mt-6">
               <button
                 onClick={() => {
                   setShowReleaseModal(null)
                   setReleaseDate('')
+                  setAddReplacement(false)
+                  setReplacementPersonId(null)
+                  setReplacementPersonName('')
+                  setReplacementSearchTerm('')
+                  setReplacementSustainedDate('')
                 }}
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
@@ -905,10 +1032,18 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
               </button>
               <button
                 onClick={handleRelease}
-                disabled={processing === showReleaseModal.id || !releaseDate}
+                disabled={
+                  processing === showReleaseModal.id || 
+                  !releaseDate || 
+                  (addReplacement && (!replacementPersonId || !replacementSustainedDate))
+                }
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
               >
-                {processing === showReleaseModal.id ? 'Releasing...' : 'Confirm Release'}
+                {processing === showReleaseModal.id 
+                  ? 'Processing...' 
+                  : addReplacement 
+                    ? 'Release & Add Replacement' 
+                    : 'Confirm Release'}
               </button>
             </div>
           </div>
