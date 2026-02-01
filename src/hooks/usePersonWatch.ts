@@ -29,7 +29,7 @@ export function usePersonWatch(personId: string) {
           setIsWatching(false)
           return
         }
-        if (error.code === '42P01' || error.status === 406) {
+        if (error.code === '42P01') {
           console.warn('person_follows table does not exist or is not accessible')
           setIsWatching(false)
           return
@@ -69,7 +69,7 @@ export function usePersonWatch(personId: string) {
         .order('created_at', { ascending: false })
 
       if (error) {
-        if (error.code === '42P01' || error.status === 406) {
+        if (error.code === '42P01') {
           console.warn('person_follows table does not exist or is not accessible')
           setWatchedPeople([])
           setWatchCount(0)
@@ -112,7 +112,7 @@ export function usePersonWatch(personId: string) {
           setIsWatching(true)
           return
         }
-        if (error.code === '42P01' || error.status === 406) {
+        if (error.code === '42P01') {
           console.warn('person_follows table does not exist or is not accessible')
           throw new Error('Watch feature is not available. The person_follows table may not be set up.')
         }
@@ -143,7 +143,7 @@ export function usePersonWatch(personId: string) {
         .eq('person_id', personId)
 
       if (error) {
-        if (error.code === '42P01' || error.status === 406) {
+        if (error.code === '42P01') {
           console.warn('person_follows table does not exist or is not accessible')
           setIsWatching(false)
           return

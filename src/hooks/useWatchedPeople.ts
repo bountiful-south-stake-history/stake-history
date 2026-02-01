@@ -37,7 +37,7 @@ export function useWatchedPeople() {
         .order('created_at', { ascending: false })
 
       if (fetchError) {
-        if (fetchError.code === '42P01' || fetchError.status === 406) {
+        if (fetchError.code === '42P01') {
           console.warn('person_follows table does not exist or is not accessible')
           setWatchedPeople([])
           setIsLoading(false)

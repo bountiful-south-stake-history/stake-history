@@ -37,7 +37,7 @@ export function useWatchActivity(limit: number = 10) {
         .eq('user_id', user.id)
 
       if (watchedError) {
-        if (watchedError.code === '42P01' || watchedError.status === 406) {
+        if (watchedError.code === '42P01') {
           console.warn('person_follows table does not exist or is not accessible')
           setActivities([])
           setHasMore(false)
