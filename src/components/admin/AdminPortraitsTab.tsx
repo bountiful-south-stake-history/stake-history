@@ -54,6 +54,11 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
   const [brightness, setBrightness] = useState(0)
   const [contrast, setContrast] = useState(0)
   const [saturation, setSaturation] = useState(0)
+  const [adjustedBlob, setAdjustedBlob] = useState<Blob | null>(null)
+  const [adjustedPreviewUrl, setAdjustedPreviewUrl] = useState<string | null>(null)
+  
+  // Accordion state for edit form sections
+  const [openSection, setOpenSection] = useState<'crop' | 'adjust' | 'upload' | 'assign' | null>(null)
   
   // Computed CSS filter for real-time preview
   const imageFilter = `brightness(${1 + brightness / 100}) contrast(${1 + contrast / 100}) saturate(${1 + saturation / 100})`
@@ -152,6 +157,9 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
       setContrast(0)
       setSaturation(0)
       setShowGuide(true)
+      setAdjustedBlob(null)
+      setAdjustedPreviewUrl(null)
+      setOpenSection(null)
     }
   }, [editingPortrait])
 
@@ -319,7 +327,49 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
     setBrightness(0)
     setContrast(0)
     setSaturation(0)
+    setAdjustedBlob(null)
+    setAdjustedPreviewUrl(null)
   }
+  
+  // Apply adjustments to the full image (without cropping)
+  const applyAdjustments = useCallback(async (imageUrl: string) => {
+    if (!hasAdjustments) return
+    
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve()
+      img.onerror = reject
+      img.src = imageUrl
+    })
+    
+    const canvas = document.createElement('canvas')
+    const pixelRatio = window.devicePixelRatio
+    canvas.width = img.naturalWidth * pixelRatio
+    canvas.height = img.naturalHeight * pixelRatio
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('No 2d context')
+    
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+    ctx.imageSmoothingQuality = 'high'
+    ctx.filter = imageFilter
+    
+    ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight)
+    
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => b ? resolve(b) : reject(new Error('Failed to create blob')),
+        'image/jpeg',
+        0.95
+      )
+    })
+    
+    setAdjustedBlob(blob)
+    setAdjustedPreviewUrl(canvas.toDataURL('image/jpeg', 0.9))
+    setOpenSection(null)
+  }, [hasAdjustments, imageFilter])
 
   const handleDoneCropping = async () => {
     // Generate preview for display (with filters applied)
@@ -510,9 +560,17 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
 
       // If crop was adjusted, use the stored cropped blob
       if (croppedBlob && !newPortraitFile) {
-        // Compress the cropped image
         const croppedFile = new File([croppedBlob], 'cropped.jpg', { type: 'image/jpeg' })
         fileToUpload = await compressImage(croppedFile, {
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 800,
+          useWebWorker: true,
+        })
+      }
+      // If adjustments were applied (without cropping), use the adjusted blob
+      else if (adjustedBlob && !newPortraitFile && !croppedBlob) {
+        const adjustedFile = new File([adjustedBlob], 'adjusted.jpg', { type: 'image/jpeg' })
+        fileToUpload = await compressImage(adjustedFile, {
           maxSizeMB: 0.5,
           maxWidthOrHeight: 800,
           useWebWorker: true,
@@ -949,258 +1007,246 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                 const personName = portrait.person.display_name || portrait.person.full_name
 
                 if (isEditing) {
+                  const currentPreviewUrl = adjustedPreviewUrl || croppedPreviewUrl || newPortraitPreview || portrait.portrait_url
+                  
                   return (
                     <div key={portrait.person.id} className="bg-white border border-gray-200 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Portrait</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Portrait: {personName}</h3>
                       
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Current Portrait
-                        </label>
+                      {/* Current Portrait Preview */}
+                      <div className="mb-4 flex items-start gap-4">
+                        <img
+                          src={currentPreviewUrl}
+                          alt={personName}
+                          className="w-24 h-30 object-cover rounded border border-gray-200"
+                        />
+                        <div className="flex-1 text-sm text-gray-600">
+                          {croppedPreviewUrl && <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs mr-2">Cropped</span>}
+                          {adjustedPreviewUrl && <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs mr-2">Adjusted</span>}
+                          {newPortraitFile && <span className="inline-block px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs mr-2">New Upload</span>}
+                          {!croppedPreviewUrl && !adjustedPreviewUrl && !newPortraitFile && <span className="text-gray-400">Original</span>}
+                        </div>
+                      </div>
+                      
+                      {/* Accordion Sections */}
+                      <div className="space-y-2 mb-4">
                         
-                        {showCropInterface && cropImageUrl ? (
-                          <div className="space-y-4">
-                            {/* Crop area with reference guide */}
-                            <div className="flex gap-4 items-start">
-                              <div className="flex-1 border border-gray-300 rounded-lg p-2 bg-gray-50">
-                                <ReactCrop
-                                  crop={crop}
-                                  onChange={(_, percentCrop) => setCrop(percentCrop)}
-                                  onComplete={(_, percentCrop) => setCompletedCrop(percentCrop)}
-                                  aspect={ASPECT_RATIO}
-                                  minWidth={50}
-                                  minHeight={62}
-                                >
-                                  <img
-                                    ref={cropImgRef}
-                                    src={cropImageUrl}
-                                    alt={personName}
-                                    onLoad={onCropImageLoad}
-                                    className="max-w-full max-h-96"
-                                    crossOrigin="anonymous"
-                                    style={{ filter: imageFilter }}
-                                  />
-                                </ReactCrop>
-                              </div>
-                              
-                              {/* Reference silhouette guide */}
-                              {showGuide && (
-                                <div className="flex-shrink-0 w-20 bg-gray-100 rounded-lg p-2">
-                                  <p className="text-xs text-gray-500 text-center mb-1">Guide</p>
-                                  <svg
-                                    viewBox="0 0 80 100"
-                                    className="w-full"
-                                    style={{ opacity: 0.6 }}
+                        {/* CROP Section */}
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => setOpenSection(openSection === 'crop' ? null : 'crop')}
+                            className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                          >
+                            <span className="font-medium text-gray-700">Crop</span>
+                            <svg className={`w-5 h-5 text-gray-500 transition-transform ${openSection === 'crop' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {openSection === 'crop' && (
+                            <div className="p-4 border-t border-gray-200">
+                              {showCropInterface && cropImageUrl ? (
+                                <div className="space-y-4">
+                                  <div className="flex gap-4 items-start">
+                                    <div className="flex-1 border border-gray-300 rounded-lg p-2 bg-gray-50">
+                                      <ReactCrop
+                                        crop={crop}
+                                        onChange={(_, percentCrop) => setCrop(percentCrop)}
+                                        onComplete={(_, percentCrop) => setCompletedCrop(percentCrop)}
+                                        aspect={ASPECT_RATIO}
+                                        minWidth={50}
+                                        minHeight={62}
+                                      >
+                                        <img
+                                          ref={cropImgRef}
+                                          src={cropImageUrl}
+                                          alt={personName}
+                                          onLoad={onCropImageLoad}
+                                          className="max-w-full max-h-80"
+                                          crossOrigin="anonymous"
+                                          style={{ filter: imageFilter }}
+                                        />
+                                      </ReactCrop>
+                                    </div>
+                                    {showGuide && (
+                                      <div className="flex-shrink-0 w-16 bg-gray-100 rounded-lg p-2">
+                                        <p className="text-xs text-gray-500 text-center mb-1">Guide</p>
+                                        <svg viewBox="0 0 80 100" className="w-full" style={{ opacity: 0.6 }}>
+                                          <rect width="80" height="100" fill="#f3f4f6" rx="4" />
+                                          <ellipse cx="40" cy="32" rx="18" ry="22" fill="none" stroke="#1e40af" strokeWidth="2" />
+                                          <path d="M 32 52 Q 32 58 28 65 L 28 75" fill="none" stroke="#1e40af" strokeWidth="2" />
+                                          <path d="M 48 52 Q 48 58 52 65 L 52 75" fill="none" stroke="#1e40af" strokeWidth="2" />
+                                          <path d="M 28 75 Q 15 78 5 85 L 5 100" fill="none" stroke="#1e40af" strokeWidth="2" />
+                                          <path d="M 52 75 Q 65 78 75 85 L 75 100" fill="none" stroke="#1e40af" strokeWidth="2" />
+                                        </svg>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                    <input type="checkbox" checked={showGuide} onChange={(e) => setShowGuide(e.target.checked)} className="rounded border-gray-300 text-primary-600" />
+                                    Show guide
+                                  </label>
+                                  <div className="flex gap-2">
+                                    <button onClick={handleDoneCropping} className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700">Apply Crop</button>
+                                    <button onClick={handleCancelCrop} className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+                                  </div>
+                                  <p className="text-xs text-amber-600">⚠️ Cropping replaces the original image.</p>
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  <p className="text-sm text-gray-600">Reposition or resize the portrait crop area.</p>
+                                  <button
+                                    onClick={() => handleStartCrop(portrait.portrait_url)}
+                                    disabled={processing === portrait.person.id}
+                                    className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50"
                                   >
-                                    <rect width="80" height="100" fill="#f3f4f6" rx="4" />
-                                    <ellipse cx="40" cy="32" rx="18" ry="22" fill="none" stroke="#1e40af" strokeWidth="2" />
-                                    <path d="M 32 52 Q 32 58 28 65 L 28 75" fill="none" stroke="#1e40af" strokeWidth="2" />
-                                    <path d="M 48 52 Q 48 58 52 65 L 52 75" fill="none" stroke="#1e40af" strokeWidth="2" />
-                                    <path d="M 28 75 Q 15 78 5 85 L 5 100" fill="none" stroke="#1e40af" strokeWidth="2" />
-                                    <path d="M 52 75 Q 65 78 75 85 L 75 100" fill="none" stroke="#1e40af" strokeWidth="2" />
-                                    <line x1="10" y1="30" x2="20" y2="30" stroke="#1e40af" strokeWidth="1.5" opacity="0.5" />
-                                    <line x1="60" y1="30" x2="70" y2="30" stroke="#1e40af" strokeWidth="1.5" opacity="0.5" />
-                                    <text x="40" y="95" textAnchor="middle" fontSize="6" fill="#6b7280">eyes ~1/3</text>
-                                  </svg>
+                                    Open Crop Tool
+                                  </button>
                                 </div>
                               )}
                             </div>
-                            
-                            {/* Guide toggle */}
-                            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={showGuide}
-                                onChange={(e) => setShowGuide(e.target.checked)}
-                                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                              />
-                              Show position guide
-                            </label>
-                            
-                            <p className="text-xs text-gray-500">
-                              Drag to reposition or resize the crop area. Aspect ratio is locked to 4:5.
-                            </p>
-                            
-                            {/* Action buttons */}
-                            <div className="space-y-2">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={handleDoneCropping}
-                                  className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 font-medium"
-                                >
-                                  Apply Crop
-                                </button>
-                                <button
-                                  onClick={handleCancelCrop}
-                                  className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                              <p className="text-xs text-amber-600 font-medium">
-                                ⚠️ Cropping cannot be undone. The original image will be replaced.
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <img
-                              src={croppedPreviewUrl || newPortraitPreview || portrait.portrait_url}
-                              alt={personName}
-                              className="w-32 h-40 object-cover rounded"
-                              style={{ filter: hasAdjustments && !croppedPreviewUrl ? imageFilter : undefined }}
-                            />
-                            {!newPortraitFile && (
-                              <div className="flex gap-2 items-center">
-                                <button
-                                  onClick={() => handleStartCrop(portrait.portrait_url)}
-                                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
-                                  disabled={processing === portrait.person.id}
-                                >
-                                  {croppedPreviewUrl ? 'Crop Again' : 'Crop'}
-                                </button>
-                                {croppedPreviewUrl && (
-                                  <span className="text-xs text-green-600 font-medium">
-                                    (cropped)
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Image adjustment sliders - always visible in edit mode */}
-                      <div className="mb-4 bg-gray-50 rounded-lg p-3 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-700">Image Adjustments</span>
-                          {hasAdjustments && (
-                            <button
-                              onClick={resetEnhancements}
-                              className="text-xs text-primary-600 hover:text-primary-700"
-                            >
-                              Reset
-                            </button>
                           )}
                         </div>
                         
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-3">
-                            <label className="text-xs text-gray-600 w-20">Brightness</label>
-                            <input
-                              type="range"
-                              min="-50"
-                              max="50"
-                              value={brightness}
-                              onChange={(e) => setBrightness(Number(e.target.value))}
-                              className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <span className="text-xs text-gray-500 w-8 text-right">{brightness}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-3">
-                            <label className="text-xs text-gray-600 w-20">Contrast</label>
-                            <input
-                              type="range"
-                              min="-50"
-                              max="50"
-                              value={contrast}
-                              onChange={(e) => setContrast(Number(e.target.value))}
-                              className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <span className="text-xs text-gray-500 w-8 text-right">{contrast}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-3">
-                            <label className="text-xs text-gray-600 w-20">Saturation</label>
-                            <input
-                              type="range"
-                              min="-50"
-                              max="50"
-                              value={saturation}
-                              onChange={(e) => setSaturation(Number(e.target.value))}
-                              className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <span className="text-xs text-gray-500 w-8 text-right">{saturation}</span>
-                          </div>
+                        {/* ADJUST Section */}
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => setOpenSection(openSection === 'adjust' ? null : 'adjust')}
+                            className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                          >
+                            <span className="font-medium text-gray-700">Adjust</span>
+                            <svg className={`w-5 h-5 text-gray-500 transition-transform ${openSection === 'adjust' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {openSection === 'adjust' && (
+                            <div className="p-4 border-t border-gray-200 space-y-4">
+                              <div className="flex gap-4 items-start">
+                                <img
+                                  src={portrait.portrait_url}
+                                  alt={personName}
+                                  className="w-32 h-40 object-cover rounded"
+                                  style={{ filter: imageFilter }}
+                                />
+                                <div className="flex-1 space-y-3">
+                                  <div className="flex items-center gap-3">
+                                    <label className="text-xs text-gray-600 w-20">Brightness</label>
+                                    <input type="range" min="-50" max="50" value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                                    <span className="text-xs text-gray-500 w-8 text-right">{brightness}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <label className="text-xs text-gray-600 w-20">Contrast</label>
+                                    <input type="range" min="-50" max="50" value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                                    <span className="text-xs text-gray-500 w-8 text-right">{contrast}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <label className="text-xs text-gray-600 w-20">Saturation</label>
+                                    <input type="range" min="-50" max="50" value={saturation} onChange={(e) => setSaturation(Number(e.target.value))} className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
+                                    <span className="text-xs text-gray-500 w-8 text-right">{saturation}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => applyAdjustments(portrait.portrait_url)}
+                                  disabled={!hasAdjustments || processing === portrait.person.id}
+                                  className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Apply Adjustments
+                                </button>
+                                {hasAdjustments && (
+                                  <button onClick={resetEnhancements} className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50">Reset</button>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         
-                        {hasAdjustments && !showCropInterface && (
-                          <p className="text-xs text-amber-600">
-                            Note: Adjustments will be applied when you crop the image.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Upload Replacement (optional)
-                        </label>
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
-                          onChange={(e) => {
-                            handlePortraitFileChange(e)
-                            // Reset crop and adjustments when uploading new file
-                            handleCancelCrop()
-                            resetEnhancements()
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          disabled={processing === portrait.person.id}
-                        />
-                      </div>
-
-                      <div className="mb-4" ref={personSearchRef}>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Assign to Person <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={editPersonSearchTerm || (editPerson?.display_name || editPerson?.full_name || '')}
-                          onChange={(e) => {
-                            setEditPersonSearchTerm(e.target.value)
-                            setShowPersonDropdown(true)
-                          }}
-                          onFocus={() => {
-                            if (editPersonSearchTerm) {
-                              setShowPersonDropdown(true)
-                            }
-                          }}
-                          placeholder="Search for person..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          disabled={processing === portrait.person.id}
-                        />
-                        {showPersonDropdown && editPersonSearchTerm && (
-                          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            {personSearchLoading ? (
-                              <div className="px-4 py-2 text-gray-500">Searching...</div>
-                            ) : personSearchResults.length === 0 ? (
-                              <div className="px-4 py-2 text-gray-500">No people found</div>
-                            ) : (
-                              personSearchResults.map((person) => (
-                                <button
-                                  key={person.id}
-                                  onClick={() => {
-                                    setEditPerson(person)
-                                    setEditPersonSearchTerm('')
-                                    setShowPersonDropdown(false)
-                                  }}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-0"
-                                >
-                                  <div className="font-medium text-gray-900">
-                                    {person.display_name || person.full_name}
-                                  </div>
-                                  {person.display_name && person.full_name !== person.display_name && (
-                                    <div className="text-sm text-gray-500">{person.full_name}</div>
+                        {/* UPLOAD Section */}
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => setOpenSection(openSection === 'upload' ? null : 'upload')}
+                            className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                          >
+                            <span className="font-medium text-gray-700">Upload Replacement</span>
+                            <svg className={`w-5 h-5 text-gray-500 transition-transform ${openSection === 'upload' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {openSection === 'upload' && (
+                            <div className="p-4 border-t border-gray-200 space-y-3">
+                              <p className="text-sm text-gray-600">Upload a completely new portrait image.</p>
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
+                                onChange={(e) => {
+                                  handlePortraitFileChange(e)
+                                  handleCancelCrop()
+                                  resetEnhancements()
+                                  setOpenSection(null)
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                disabled={processing === portrait.person.id}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* ASSIGN Section */}
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => setOpenSection(openSection === 'assign' ? null : 'assign')}
+                            className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                          >
+                            <span className="font-medium text-gray-700">Assign to Person</span>
+                            <svg className={`w-5 h-5 text-gray-500 transition-transform ${openSection === 'assign' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {openSection === 'assign' && (
+                            <div className="p-4 border-t border-gray-200" ref={personSearchRef}>
+                              <p className="text-sm text-gray-600 mb-3">Currently assigned to: <strong>{editPerson?.display_name || editPerson?.full_name}</strong></p>
+                              <input
+                                type="text"
+                                value={editPersonSearchTerm}
+                                onChange={(e) => {
+                                  setEditPersonSearchTerm(e.target.value)
+                                  setShowPersonDropdown(true)
+                                }}
+                                onFocus={() => editPersonSearchTerm && setShowPersonDropdown(true)}
+                                placeholder="Search to reassign..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                disabled={processing === portrait.person.id}
+                              />
+                              {showPersonDropdown && editPersonSearchTerm && (
+                                <div className="mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                  {personSearchLoading ? (
+                                    <div className="px-4 py-2 text-gray-500">Searching...</div>
+                                  ) : personSearchResults.length === 0 ? (
+                                    <div className="px-4 py-2 text-gray-500">No people found</div>
+                                  ) : (
+                                    personSearchResults.map((person) => (
+                                      <button
+                                        key={person.id}
+                                        onClick={() => {
+                                          setEditPerson(person)
+                                          setEditPersonSearchTerm('')
+                                          setShowPersonDropdown(false)
+                                        }}
+                                        className="w-full text-left px-4 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-0"
+                                      >
+                                        <div className="font-medium text-gray-900">{person.display_name || person.full_name}</div>
+                                      </button>
+                                    ))
                                   )}
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-
-                      <div className="flex gap-2">
+                      
+                      {/* Save/Cancel Buttons */}
+                      <div className="flex gap-2 pt-2 border-t border-gray-200">
                         <button
                           onClick={handleSaveEdit}
                           disabled={processing === portrait.person.id || !editPerson}
