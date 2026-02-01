@@ -91,6 +91,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
   const [showCropOverlay, setShowCropOverlay] = useState(false)
   const [showSubmitterFields, setShowSubmitterFields] = useState(true)
   const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null)
+  const [showGuide, setShowGuide] = useState(true)
   
   const { people: tagSearchResults, loading: tagSearchLoading } = usePeopleSearch(tagSearchTerm)
   const { user } = useAuth()
@@ -1582,24 +1583,73 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                             minWidth={100}
                             disabled={submitting || success}
                           >
-                            <img
-                              ref={imgRef}
-                              alt="Crop preview"
-                              src={previewUrl || ''}
-                              onLoad={(e) => {
-                                if (!crop) {
-                                  onImageLoad(e)
-                                }
-                              }}
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: '400px',
-                                width: 'auto',
-                                height: 'auto',
-                              }}
-                            />
+                            <div className="relative inline-block">
+                              <img
+                                ref={imgRef}
+                                alt="Crop preview"
+                                src={previewUrl || ''}
+                                onLoad={(e) => {
+                                  if (!crop) {
+                                    onImageLoad(e)
+                                  }
+                                }}
+                                style={{
+                                  maxWidth: '100%',
+                                  maxHeight: '400px',
+                                  width: 'auto',
+                                  height: 'auto',
+                                }}
+                              />
+                              {/* Head position guide overlay */}
+                              {showGuide && crop && (
+                                <div
+                                  className="absolute pointer-events-none"
+                                  style={{
+                                    left: `${crop.x}%`,
+                                    top: `${crop.y}%`,
+                                    width: `${crop.width}%`,
+                                    height: `${crop.height}%`,
+                                  }}
+                                >
+                                  <svg
+                                    viewBox="0 0 80 100"
+                                    className="w-full h-full"
+                                    preserveAspectRatio="none"
+                                  >
+                                    <ellipse
+                                      cx="40"
+                                      cy="35"
+                                      rx="22"
+                                      ry="28"
+                                      fill="none"
+                                      stroke="rgba(59, 130, 246, 0.5)"
+                                      strokeWidth="1.5"
+                                      strokeDasharray="4,3"
+                                    />
+                                    <line
+                                      x1="12"
+                                      y1="32"
+                                      x2="68"
+                                      y2="32"
+                                      stroke="rgba(59, 130, 246, 0.4)"
+                                      strokeWidth="1"
+                                      strokeDasharray="6,4"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
                           </ReactCrop>
                         </div>
+                        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={showGuide} 
+                            onChange={(e) => setShowGuide(e.target.checked)} 
+                            className="rounded border-gray-300 text-primary-600" 
+                          />
+                          Show head position guide
+                        </label>
                         <button
                           onClick={() => {
                             if (percentCropState) {
@@ -2130,26 +2180,75 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
               aspect={aspectRatio}
               minWidth={100}
             >
-              <img
-                ref={overlayImgRef}
-                src={previewUrl || ''}
-                onLoad={(e) => {
-                  if (!crop) {
-                    onImageLoad(e)
-                  }
-                }}
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '70vh',
-                  width: 'auto',
-                  height: 'auto',
-                }}
-                alt="Crop preview"
-              />
+              <div className="relative inline-block">
+                <img
+                  ref={overlayImgRef}
+                  src={previewUrl || ''}
+                  onLoad={(e) => {
+                    if (!crop) {
+                      onImageLoad(e)
+                    }
+                  }}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '70vh',
+                    width: 'auto',
+                    height: 'auto',
+                  }}
+                  alt="Crop preview"
+                />
+                {/* Head position guide overlay */}
+                {showGuide && crop && (
+                  <div
+                    className="absolute pointer-events-none"
+                    style={{
+                      left: `${crop.x}%`,
+                      top: `${crop.y}%`,
+                      width: `${crop.width}%`,
+                      height: `${crop.height}%`,
+                    }}
+                  >
+                    <svg
+                      viewBox="0 0 80 100"
+                      className="w-full h-full"
+                      preserveAspectRatio="none"
+                    >
+                      <ellipse
+                        cx="40"
+                        cy="35"
+                        rx="22"
+                        ry="28"
+                        fill="none"
+                        stroke="rgba(59, 130, 246, 0.5)"
+                        strokeWidth="1.5"
+                        strokeDasharray="4,3"
+                      />
+                      <line
+                        x1="12"
+                        y1="32"
+                        x2="68"
+                        y2="32"
+                        stroke="rgba(59, 130, 246, 0.4)"
+                        strokeWidth="1"
+                        strokeDasharray="6,4"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
             </ReactCrop>
           </div>
           
           <div className="flex gap-3 p-4 bg-black/50">
+            <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={showGuide} 
+                onChange={(e) => setShowGuide(e.target.checked)} 
+                className="rounded border-white/30 text-primary-600" 
+              />
+              Show guide
+            </label>
             <button
               onClick={() => setShowCropOverlay(false)}
               className="flex-1 py-3 border border-white/30 text-white rounded-lg hover:bg-white/10 transition-colors"
