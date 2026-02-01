@@ -56,7 +56,9 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
   const [addNewSearchTerm, setAddNewSearchTerm] = useState('')
   const [addNewSustainedDate, setAddNewSustainedDate] = useState('')
   const [addNewPositionId, setAddNewPositionId] = useState<string>('')
+  const [addNewNotes, setAddNewNotes] = useState('')
   const [availablePositions, setAvailablePositions] = useState<Position[]>([])
+  const [currentStakePresidentName, setCurrentStakePresidentName] = useState<string>('')
 
   const loading = orgsLoading || callingsLoading
 
@@ -170,6 +172,54 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
       setAddNewPositionId('')
     }
   }, [selectedOrgId, selectedOrg, isPresidencyOrg])
+
+  // Fetch current stake president name for auto-filling notes
+  useEffect(() => {
+    const fetchStakePresident = async () => {
+      try {
+        // Find Stake Presidency organization
+        const stakePresOrg = organizations.find(
+          (o) => o.name.toLowerCase() === 'stake presidency'
+        )
+        if (!stakePresOrg) return
+
+        // Get current president (no release date, position_type = president)
+        const { data, error } = await supabase
+          .from('callings')
+          .select(`
+            id,
+            person:people!callings_person_id_fkey(full_name),
+            position:positions!callings_position_id_fkey(position_type)
+          `)
+          .eq('organization_id', stakePresOrg.id)
+          .is('released_date', null)
+
+        if (error) throw error
+
+        // Cast data to proper type - Supabase returns single objects for joins
+        type CallingWithJoins = {
+          id: string
+          person: { full_name: string } | null
+          position: { position_type: string } | null
+        }
+        const typedData = data as unknown as CallingWithJoins[] | null
+
+        const president = typedData?.find((c) => c.position?.position_type === 'president')
+        if (president?.person?.full_name) {
+          // Extract last name from full name (e.g., "Gary R. Hill" -> "Hill")
+          const nameParts = president.person.full_name.trim().split(' ')
+          const lastName = nameParts[nameParts.length - 1]
+          setCurrentStakePresidentName(`${lastName} Presidency`)
+        }
+      } catch (err) {
+        console.error('Failed to fetch stake president:', err)
+      }
+    }
+
+    if (organizations.length > 0) {
+      fetchStakePresident()
+    }
+  }, [organizations])
 
   const getMaxPresidencyNumber = () => {
     return callings.reduce((max, calling) => {
@@ -397,26 +447,35 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
       // Get the selected position to check its type
       const selectedPosition = availablePositions.find(p => p.id === addNewPositionId)
       
-      // For president/counselor positions, create new presidency number
-      // For member/other positions (like High Councilor), use current presidency
-      let presidencyNum: number
-      if (selectedPosition?.position_type === 'president') {
-        presidencyNum = getMaxPresidencyNumber() + 1
-      } else {
-        // Use current presidency number for non-president callings
-        presidencyNum = currentPresidency || getMaxPresidencyNumber()
+      // All callings get sequential numbering (next number after max)
+      const presidencyNum = getMaxPresidencyNumber() + 1
+
+      // Build insert data - include notes for non-president callings
+      const insertData: {
+        person_id: string
+        organization_id: string
+        position_id: string
+        presidency_number: number
+        sustained_date: string
+        sustained_precision: string
+        notes?: string | null
+      } = {
+        person_id: addNewPersonId,
+        organization_id: selectedOrgId,
+        position_id: addNewPositionId,
+        presidency_number: presidencyNum,
+        sustained_date: addNewSustainedDate,
+        sustained_precision: 'exact',
+      }
+
+      // Add notes for non-president callings (e.g., High Councilors)
+      if (selectedPosition?.position_type !== 'president' && addNewNotes.trim()) {
+        insertData.notes = addNewNotes.trim()
       }
 
       const { data: newCalling, error: insertError } = await supabase
         .from('callings')
-        .insert({
-          person_id: addNewPersonId,
-          organization_id: selectedOrgId,
-          position_id: addNewPositionId,
-          presidency_number: presidencyNum,
-          sustained_date: addNewSustainedDate,
-          sustained_precision: 'exact',
-        })
+        .insert(insertData)
         .select()
         .single()
 
@@ -428,14 +487,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
           record_id: newCalling.id,
           action: 'add_calling',
           old_values: null,
-          new_values: {
-            person_id: addNewPersonId,
-            organization_id: selectedOrgId,
-            position_id: addNewPositionId,
-            presidency_number: presidencyNum,
-            sustained_date: addNewSustainedDate,
-            sustained_precision: 'exact',
-          },
+          new_values: insertData,
           performed_by: user.id,
           performed_at: new Date().toISOString(),
         })
@@ -447,6 +499,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
       setAddNewSearchTerm('')
       setAddNewSustainedDate('')
       setAddNewPositionId(availablePositions.length === 1 ? availablePositions[0].id : '')
+      setAddNewNotes('')
       onActionComplete?.()
       window.location.reload()
     } catch (err) {
@@ -931,6 +984,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                       setAddNewSearchTerm('')
                       setAddNewSustainedDate('')
                       setAddNewPositionId(availablePositions.length === 1 ? availablePositions[0].id : '')
+                      setAddNewNotes(currentStakePresidentName)
                       setShowAddNewModal(true)
                     }}
                     className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
@@ -1216,15 +1270,41 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                   />
                 </div>
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Presidency #</label>
-                  <div className="px-3 py-2 bg-gray-100 rounded text-gray-700">
-                    {availablePositions.find(p => p.id === addNewPositionId)?.position_type === 'president'
-                      ? `Will start new presidency #${getMaxPresidencyNumber() + 1}`
-                      : `Will be assigned to current presidency #${currentPresidency || getMaxPresidencyNumber()}`
-                    }
+                {/* Show different info based on position type */}
+                {availablePositions.find(p => p.id === addNewPositionId)?.position_type === 'president' ? (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Presidency #</label>
+                    <div className="px-3 py-2 bg-gray-100 rounded text-gray-700">
+                      Will start new presidency #{getMaxPresidencyNumber() + 1}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Sequential #</label>
+                      <div className="px-3 py-2 bg-gray-100 rounded text-gray-700 text-sm">
+                        Will be assigned #{getMaxPresidencyNumber() + 1}
+                        <span className="text-gray-500 ml-2">(auto-assigned)</span>
+                      </div>
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Presidency Label
+                        <span className="text-gray-400 font-normal ml-1">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={addNewNotes}
+                        onChange={(e) => setAddNewNotes(e.target.value)}
+                        placeholder="e.g., Hill Presidency"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      {currentStakePresidentName && addNewNotes === currentStakePresidentName && (
+                        <p className="text-xs text-green-600 mt-1">Auto-filled from current Stake President</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </>
             )}
 
@@ -1237,6 +1317,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                   setAddNewSearchTerm('')
                   setAddNewSustainedDate('')
                   setAddNewPositionId(availablePositions.length === 1 ? availablePositions[0].id : '')
+                  setAddNewNotes('')
                 }}
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
