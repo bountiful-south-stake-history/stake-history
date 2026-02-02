@@ -34,7 +34,9 @@ export function useApprovedPhotos() {
           status,
           reviewed_at,
           reviewed_by,
-          rejection_reason
+          rejection_reason,
+          focal_x,
+          focal_y
         `)
         .eq('status', 'approved')
         .order('submitted_at', { ascending: false })
