@@ -52,7 +52,12 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
   const [adjustedPreviewUrl, setAdjustedPreviewUrl] = useState<string | null>(null)
 
   // Accordion state for edit form sections
-  const [openSection, setOpenSection] = useState<'crop' | 'adjust' | null>(null)
+  const [openSection, setOpenSection] = useState<'crop' | 'adjust' | 'focal' | null>(null)
+
+  // Focal point state (percentage from top-left)
+  const [focalPointX, setFocalPointX] = useState(50)
+  const [focalPointY, setFocalPointY] = useState(50)
+  const focalPointRef = useRef<HTMLDivElement>(null)
 
   // Computed CSS filter for real-time preview
   const imageFilter = `brightness(${1 + brightness / 100}) contrast(${1 + contrast / 100}) saturate(${1 + saturation / 100})`
@@ -376,6 +381,11 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
       console.error('Failed to parse additional_people:', e)
     }
     setEditAdditionalPeople(additionalPeople || [])
+    
+    // Load focal point (default to center if not set)
+    setFocalPointX((photo as any).focal_x ?? 50)
+    setFocalPointY((photo as any).focal_y ?? 50)
+    
     setEditingPhoto(photoId)
   }
 
@@ -390,6 +400,8 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
     setEditAdditionalPeople([])
     setTagSearchTerm('')
     setShowTagDropdown(false)
+    setFocalPointX(50)
+    setFocalPointY(50)
   }
 
   const handleSaveEdit = async () => {
@@ -463,6 +475,8 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
           submitter_email: editSubmitterEmail,
           additional_people: editAdditionalPeople.length > 0 ? JSON.stringify(editAdditionalPeople) : null,
           photo_url: newPhotoUrl,
+          focal_x: focalPointX,
+          focal_y: focalPointY,
         })
         .eq('id', editingPhoto)
 
@@ -775,6 +789,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
                     src={photoUrl}
                     alt={photo.caption || 'Photo'}
                     className="w-full h-full object-cover"
+                    style={{ objectPosition: `${(photo as any).focal_x ?? 50}% ${(photo as any).focal_y ?? 50}%` }}
                     onError={async (e) => {
                       console.error('Image load error for photo:', photo.id)
                       console.error('URL:', photoUrl)
@@ -1170,6 +1185,82 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
                           >
                             Reset
                           </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Focal Point Accordion */}
+                {photoUrl && !showCropInterface && (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenSection(openSection === 'focal' ? null : 'focal')}
+                      className="w-full px-4 py-3 bg-gray-50 flex justify-between items-center hover:bg-gray-100 transition-colors"
+                    >
+                      <span className="font-medium text-gray-700">Preview Focus Point</span>
+                      <span className={`transform transition-transform ${openSection === 'focal' ? 'rotate-180' : ''}`}>▼</span>
+                    </button>
+                    {openSection === 'focal' && (
+                      <div className="p-4 border-t border-gray-200">
+                        <p className="text-sm text-gray-600 mb-3">
+                          Click on the image to set where the preview should focus (e.g., click on faces).
+                        </p>
+                        <div 
+                          ref={focalPointRef}
+                          className="relative cursor-crosshair border border-gray-300 rounded overflow-hidden"
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            const x = ((e.clientX - rect.left) / rect.width) * 100
+                            const y = ((e.clientY - rect.top) / rect.height) * 100
+                            setFocalPointX(Math.round(x))
+                            setFocalPointY(Math.round(y))
+                          }}
+                        >
+                          <img
+                            src={photoUrl}
+                            alt="Set focal point"
+                            className="w-full max-h-64 object-contain"
+                            draggable={false}
+                          />
+                          {/* Focal point marker */}
+                          <div
+                            className="absolute w-8 h-8 border-2 border-red-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                            style={{
+                              left: `${focalPointX}%`,
+                              top: `${focalPointY}%`,
+                              boxShadow: '0 0 0 2px white, 0 0 8px rgba(0,0,0,0.5)',
+                            }}
+                          >
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-2 h-2 bg-red-500 rounded-full" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="text-xs text-gray-500">
+                            Position: {focalPointX}% from left, {focalPointY}% from top
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => { setFocalPointX(50); setFocalPointY(50) }}
+                            className="text-xs text-primary-600 hover:text-primary-700"
+                          >
+                            Reset to center
+                          </button>
+                        </div>
+                        {/* Preview of how it will look in card */}
+                        <div className="mt-4">
+                          <p className="text-xs text-gray-500 mb-2">Preview (how it appears in the grid):</p>
+                          <div className="w-32 h-24 overflow-hidden rounded border border-gray-300 mx-auto">
+                            <img
+                              src={photoUrl}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                              style={{ objectPosition: `${focalPointX}% ${focalPointY}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
