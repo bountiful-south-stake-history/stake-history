@@ -1,10 +1,13 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop'
+import 'react-image-crop/dist/ReactCrop.css'
 import { supabase } from '../../lib/supabase'
 import { usePendingPhotos } from '../../hooks/usePendingPhotos'
 import { useApprovedPhotos } from '../../hooks/useApprovedPhotos'
 import { usePeopleSearch } from '../../hooks/usePeopleSearch'
 import { useAuth } from '../../hooks/useAuth'
+import compressImage from 'browser-image-compression'
 import type { Person } from '../../lib/types'
 
 interface AdminPhotosTabProps {
@@ -32,6 +35,29 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
   const [deleteConfirmState, setDeleteConfirmState] = useState<Record<string, 'none' | 'warning' | 'modal'>>({})
   const [deleteConfirmText, setDeleteConfirmText] = useState<Record<string, string>>({})
 
+  // Crop-related state
+  const [showCropInterface, setShowCropInterface] = useState(false)
+  const [crop, setCrop] = useState<Crop>()
+  const [completedCrop, setCompletedCrop] = useState<Crop>()
+  const cropImgRef = useRef<HTMLImageElement>(null)
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null)
+  const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null)
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
+
+  // Image enhancement state
+  const [brightness, setBrightness] = useState(0)
+  const [contrast, setContrast] = useState(0)
+  const [saturation, setSaturation] = useState(0)
+  const [adjustedBlob, setAdjustedBlob] = useState<Blob | null>(null)
+  const [adjustedPreviewUrl, setAdjustedPreviewUrl] = useState<string | null>(null)
+
+  // Accordion state for edit form sections
+  const [openSection, setOpenSection] = useState<'crop' | 'adjust' | null>(null)
+
+  // Computed CSS filter for real-time preview
+  const imageFilter = `brightness(${1 + brightness / 100}) contrast(${1 + contrast / 100}) saturate(${1 + saturation / 100})`
+  const hasAdjustments = brightness !== 0 || contrast !== 0 || saturation !== 0
+
   const photos = viewMode === 'pending' ? pendingPhotos : approvedPhotos
   const loading = viewMode === 'pending' ? pendingLoading : approvedLoading
   const error = viewMode === 'pending' ? pendingError : approvedError
@@ -54,6 +80,254 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Reset crop and enhancement state when editing changes
+  useEffect(() => {
+    if (!editingPhoto) {
+      setShowCropInterface(false)
+      setCrop(undefined)
+      setCompletedCrop(undefined)
+      setCropImageUrl(null)
+      setCroppedPreviewUrl(null)
+      setCroppedBlob(null)
+      setBrightness(0)
+      setContrast(0)
+      setSaturation(0)
+      setAdjustedBlob(null)
+      setAdjustedPreviewUrl(null)
+      setOpenSection(null)
+    }
+  }, [editingPhoto])
+
+  const onCropImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget
+    // For photos, use a free-form crop starting at 90% of the image
+    const initialCrop = centerCrop(
+      makeAspectCrop(
+        {
+          unit: '%',
+          width: 90,
+        },
+        naturalWidth / naturalHeight, // Keep original aspect ratio initially
+        naturalWidth,
+        naturalHeight
+      ),
+      naturalWidth,
+      naturalHeight
+    )
+    setCrop(initialCrop)
+    setCompletedCrop(initialCrop)
+  }, [])
+
+  const getCroppedImg = useCallback(async (image: HTMLImageElement, cropData: Crop, filterString?: string): Promise<Blob> => {
+    if (!image.complete) {
+      throw new Error('Image not loaded')
+    }
+
+    if (!cropData || cropData.x === undefined || cropData.y === undefined || !cropData.width || !cropData.height) {
+      throw new Error('Invalid crop coordinates')
+    }
+
+    const canvas = document.createElement('canvas')
+    const naturalWidth = image.naturalWidth
+    const naturalHeight = image.naturalHeight
+    const pixelRatio = window.devicePixelRatio
+
+    let cropX: number, cropY: number, cropWidth: number, cropHeight: number
+
+    if (cropData.unit === '%') {
+      cropX = (cropData.x / 100) * naturalWidth
+      cropY = (cropData.y / 100) * naturalHeight
+      cropWidth = (cropData.width / 100) * naturalWidth
+      cropHeight = (cropData.height / 100) * naturalHeight
+    } else {
+      const scaleX = naturalWidth / image.width
+      const scaleY = naturalHeight / image.height
+      cropX = cropData.x * scaleX
+      cropY = cropData.y * scaleY
+      cropWidth = cropData.width * scaleX
+      cropHeight = cropData.height * scaleY
+    }
+
+    canvas.width = Math.round(cropWidth * pixelRatio)
+    canvas.height = Math.round(cropHeight * pixelRatio)
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('No 2d context')
+
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+    ctx.imageSmoothingQuality = 'high'
+
+    if (filterString) {
+      ctx.filter = filterString
+    }
+
+    ctx.drawImage(
+      image,
+      Math.round(cropX),
+      Math.round(cropY),
+      Math.round(cropWidth),
+      Math.round(cropHeight),
+      0,
+      0,
+      cropWidth,
+      cropHeight
+    )
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('Canvas is empty'))
+            return
+          }
+          resolve(blob)
+        },
+        'image/jpeg',
+        0.95
+      )
+    })
+  }, [])
+
+  const generateCroppedPreview = useCallback(async (filterString?: string) => {
+    if (!completedCrop || !cropImgRef.current) return null
+
+    const image = cropImgRef.current
+    if (!image.complete) return null
+
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+
+    const naturalWidth = image.naturalWidth
+    const naturalHeight = image.naturalHeight
+
+    let cropX: number, cropY: number, cropWidth: number, cropHeight: number
+
+    if (completedCrop.unit === '%') {
+      cropX = (completedCrop.x / 100) * naturalWidth
+      cropY = (completedCrop.y / 100) * naturalHeight
+      cropWidth = (completedCrop.width / 100) * naturalWidth
+      cropHeight = (completedCrop.height / 100) * naturalHeight
+    } else {
+      const scaleX = naturalWidth / image.width
+      const scaleY = naturalHeight / image.height
+      cropX = completedCrop.x * scaleX
+      cropY = completedCrop.y * scaleY
+      cropWidth = completedCrop.width * scaleX
+      cropHeight = completedCrop.height * scaleY
+    }
+
+    // Preview at reasonable size
+    const maxPreviewWidth = 300
+    const scale = maxPreviewWidth / cropWidth
+    canvas.width = maxPreviewWidth
+    canvas.height = cropHeight * scale
+
+    ctx.imageSmoothingQuality = 'high'
+
+    if (filterString) {
+      ctx.filter = filterString
+    }
+
+    ctx.drawImage(
+      image,
+      Math.round(cropX),
+      Math.round(cropY),
+      Math.round(cropWidth),
+      Math.round(cropHeight),
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    )
+
+    return canvas.toDataURL('image/jpeg', 0.9)
+  }, [completedCrop])
+
+  const handleStartCrop = (photoUrl: string) => {
+    setCropImageUrl(photoUrl)
+    setShowCropInterface(true)
+    setCrop(undefined)
+    setCompletedCrop(undefined)
+    setCroppedPreviewUrl(null)
+    setCroppedBlob(null)
+    setBrightness(0)
+    setContrast(0)
+    setSaturation(0)
+  }
+
+  const resetEnhancements = () => {
+    setBrightness(0)
+    setContrast(0)
+    setSaturation(0)
+    setAdjustedBlob(null)
+    setAdjustedPreviewUrl(null)
+  }
+
+  const applyAdjustments = useCallback(async (imageUrl: string) => {
+    if (!hasAdjustments) return
+
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve()
+      img.onerror = reject
+      img.src = imageUrl
+    })
+
+    const canvas = document.createElement('canvas')
+    const pixelRatio = window.devicePixelRatio
+    canvas.width = img.naturalWidth * pixelRatio
+    canvas.height = img.naturalHeight * pixelRatio
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('No 2d context')
+
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+    ctx.imageSmoothingQuality = 'high'
+    ctx.filter = imageFilter
+
+    ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight)
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => b ? resolve(b) : reject(new Error('Failed to create blob')),
+        'image/jpeg',
+        0.95
+      )
+    })
+
+    setAdjustedBlob(blob)
+    setAdjustedPreviewUrl(canvas.toDataURL('image/jpeg', 0.9))
+    setOpenSection(null)
+  }, [hasAdjustments, imageFilter])
+
+  const handleDoneCropping = async () => {
+    const preview = await generateCroppedPreview(imageFilter)
+    if (preview) {
+      setCroppedPreviewUrl(preview)
+    }
+
+    if (completedCrop && cropImgRef.current) {
+      try {
+        const blob = await getCroppedImg(cropImgRef.current, completedCrop, imageFilter)
+        setCroppedBlob(blob)
+      } catch (err) {
+        console.error('Failed to generate cropped blob:', err)
+      }
+    }
+
+    setShowCropInterface(false)
+  }
+
+  const handleCancelCrop = () => {
+    setShowCropInterface(false)
+    setCrop(undefined)
+    setCompletedCrop(undefined)
+    setCropImageUrl(null)
+  }
 
   const handleStartEdit = async (photoId: string) => {
     const photo = photos.find((p) => p.id === photoId)
@@ -123,6 +397,62 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
 
     setProcessing(editingPhoto)
     try {
+      const photo = photos.find((p) => p.id === editingPhoto)
+      if (!photo) throw new Error('Photo not found')
+
+      let newPhotoUrl = photo.photo_url
+      const oldPhotoUrl = photo.photo_url
+      let fileToUpload: Blob | null = null
+
+      // If crop was adjusted, use the stored cropped blob
+      if (croppedBlob) {
+        const croppedFile = new File([croppedBlob], 'cropped.jpg', { type: 'image/jpeg' })
+        fileToUpload = await compressImage(croppedFile, {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        })
+      }
+      // If adjustments were applied (without cropping), use the adjusted blob
+      else if (adjustedBlob) {
+        const adjustedFile = new File([adjustedBlob], 'adjusted.jpg', { type: 'image/jpeg' })
+        fileToUpload = await compressImage(adjustedFile, {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        })
+      }
+
+      if (fileToUpload) {
+        const timestamp = Date.now()
+        const newPath = `photos/${editingPhoto}_${timestamp}.jpg`
+
+        const { error: uploadError } = await supabase.storage
+          .from('photos')
+          .upload(newPath, fileToUpload, { upsert: true })
+
+        if (uploadError) throw uploadError
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('photos').getPublicUrl(newPath)
+
+        newPhotoUrl = publicUrl
+
+        // Delete old file if URL changed
+        if (oldPhotoUrl && oldPhotoUrl !== newPhotoUrl) {
+          try {
+            const url = new URL(oldPhotoUrl)
+            const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/photos\/(.+)/)
+            if (pathMatch) {
+              await supabase.storage.from('photos').remove([pathMatch[1]])
+            }
+          } catch (e) {
+            console.error('Error deleting old photo:', e)
+          }
+        }
+      }
+
       const { error: updateError } = await supabase
         .from('photos')
         .update({
@@ -132,6 +462,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
           submitter_name: editSubmitterName,
           submitter_email: editSubmitterEmail,
           additional_people: editAdditionalPeople.length > 0 ? JSON.stringify(editAdditionalPeople) : null,
+          photo_url: newPhotoUrl,
         })
         .eq('id', editingPhoto)
 
@@ -170,6 +501,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
             submitter_name: editSubmitterName,
             submitter_email: editSubmitterEmail,
             tagged_people_count: editTaggedPeople.length,
+            image_modified: !!(croppedBlob || adjustedBlob),
           },
           performed_by: user.id,
           performed_at: new Date().toISOString(),
@@ -619,13 +951,230 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
               <h2 className="text-2xl font-bold text-primary-700 mb-4">Edit Photo</h2>
               
+              {/* Image Preview with modification indicators */}
               {photoUrl && (
                 <div className="mb-4">
-                  <img src={photoUrl} alt={editCaption || 'Photo'} className="w-full max-h-64 object-contain rounded" />
+                  {croppedPreviewUrl ? (
+                    <div className="relative">
+                      <img src={croppedPreviewUrl} alt="Cropped preview" className="w-full max-h-64 object-contain rounded border-2 border-green-500" />
+                      <span className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded">Cropped</span>
+                    </div>
+                  ) : adjustedPreviewUrl ? (
+                    <div className="relative">
+                      <img src={adjustedPreviewUrl} alt="Adjusted preview" className="w-full max-h-64 object-contain rounded border-2 border-blue-500" />
+                      <span className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">Adjusted</span>
+                    </div>
+                  ) : (
+                    <img src={photoUrl} alt={editCaption || 'Photo'} className="w-full max-h-64 object-contain rounded" />
+                  )}
                 </div>
               )}
 
               <div className="space-y-4">
+                {/* Crop Accordion */}
+                {photoUrl && (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenSection(openSection === 'crop' ? null : 'crop')}
+                      className="w-full px-4 py-3 bg-gray-50 flex justify-between items-center hover:bg-gray-100 transition-colors"
+                    >
+                      <span className="font-medium text-gray-700">Crop Image</span>
+                      <span className={`transform transition-transform ${openSection === 'crop' ? 'rotate-180' : ''}`}>▼</span>
+                    </button>
+                    {openSection === 'crop' && (
+                      <div className="p-4 border-t border-gray-200">
+                        {showCropInterface && cropImageUrl ? (
+                          <div className="space-y-4">
+                            <div className="max-h-[400px] overflow-auto bg-gray-100 rounded flex items-center justify-center">
+                              <ReactCrop
+                                crop={crop}
+                                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                                onComplete={(c) => setCompletedCrop(c)}
+                              >
+                                <img
+                                  ref={cropImgRef}
+                                  src={cropImageUrl}
+                                  alt="Crop"
+                                  onLoad={onCropImageLoad}
+                                  style={{ maxWidth: '100%', maxHeight: '400px', filter: imageFilter }}
+                                  crossOrigin="anonymous"
+                                />
+                              </ReactCrop>
+                            </div>
+                            
+                            {/* Adjustment sliders in crop mode */}
+                            <div className="space-y-3 p-3 bg-gray-50 rounded">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  Brightness: {brightness > 0 ? '+' : ''}{brightness}%
+                                </label>
+                                <input
+                                  type="range"
+                                  min="-50"
+                                  max="50"
+                                  value={brightness}
+                                  onChange={(e) => setBrightness(Number(e.target.value))}
+                                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  Contrast: {contrast > 0 ? '+' : ''}{contrast}%
+                                </label>
+                                <input
+                                  type="range"
+                                  min="-50"
+                                  max="50"
+                                  value={contrast}
+                                  onChange={(e) => setContrast(Number(e.target.value))}
+                                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  Saturation: {saturation > 0 ? '+' : ''}{saturation}%
+                                </label>
+                                <input
+                                  type="range"
+                                  min="-50"
+                                  max="50"
+                                  value={saturation}
+                                  onChange={(e) => setSaturation(Number(e.target.value))}
+                                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                />
+                              </div>
+                              {hasAdjustments && (
+                                <button
+                                  type="button"
+                                  onClick={resetEnhancements}
+                                  className="text-xs text-gray-500 hover:text-gray-700"
+                                >
+                                  Reset adjustments
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={handleDoneCropping}
+                                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                              >
+                                Apply Crop
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelCrop}
+                                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                            <p className="text-xs text-amber-600">Warning: Crop cannot be undone after saving.</p>
+                          </div>
+                        ) : (
+                          <div className="text-center">
+                            <p className="text-sm text-gray-600 mb-3">Crop the image to remove unwanted areas.</p>
+                            <button
+                              type="button"
+                              onClick={() => handleStartCrop(photoUrl)}
+                              className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
+                            >
+                              Start Cropping
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Adjust Accordion (only show if not cropping) */}
+                {photoUrl && !showCropInterface && !croppedBlob && (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenSection(openSection === 'adjust' ? null : 'adjust')}
+                      className="w-full px-4 py-3 bg-gray-50 flex justify-between items-center hover:bg-gray-100 transition-colors"
+                    >
+                      <span className="font-medium text-gray-700">Adjust Image</span>
+                      <span className={`transform transition-transform ${openSection === 'adjust' ? 'rotate-180' : ''}`}>▼</span>
+                    </button>
+                    {openSection === 'adjust' && (
+                      <div className="p-4 border-t border-gray-200">
+                        <div className="mb-4">
+                          <img
+                            src={photoUrl}
+                            alt="Preview"
+                            style={{ filter: imageFilter }}
+                            className="w-full max-h-48 object-contain rounded"
+                            crossOrigin="anonymous"
+                          />
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Brightness: {brightness > 0 ? '+' : ''}{brightness}%
+                            </label>
+                            <input
+                              type="range"
+                              min="-50"
+                              max="50"
+                              value={brightness}
+                              onChange={(e) => setBrightness(Number(e.target.value))}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Contrast: {contrast > 0 ? '+' : ''}{contrast}%
+                            </label>
+                            <input
+                              type="range"
+                              min="-50"
+                              max="50"
+                              value={contrast}
+                              onChange={(e) => setContrast(Number(e.target.value))}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Saturation: {saturation > 0 ? '+' : ''}{saturation}%
+                            </label>
+                            <input
+                              type="range"
+                              min="-50"
+                              max="50"
+                              value={saturation}
+                              onChange={(e) => setSaturation(Number(e.target.value))}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                          <button
+                            type="button"
+                            onClick={() => applyAdjustments(photoUrl)}
+                            disabled={!hasAdjustments}
+                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            Apply Adjustments
+                          </button>
+                          <button
+                            type="button"
+                            onClick={resetEnhancements}
+                            disabled={!hasAdjustments}
+                            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Caption <span className="text-red-500">*</span>
