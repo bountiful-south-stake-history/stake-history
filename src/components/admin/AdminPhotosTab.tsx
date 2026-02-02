@@ -54,9 +54,9 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
   // Accordion state for edit form sections
   const [openSection, setOpenSection] = useState<'crop' | 'adjust' | 'focal' | null>(null)
 
-  // Focal point state (percentage from top-left)
+  // Focal point state (percentage from top-left, default 1/3 from top for faces)
   const [focalPointX, setFocalPointX] = useState(50)
-  const [focalPointY, setFocalPointY] = useState(50)
+  const [focalPointY, setFocalPointY] = useState(33)
   const focalPointRef = useRef<HTMLDivElement>(null)
 
   // Computed CSS filter for real-time preview
@@ -382,9 +382,9 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
     }
     setEditAdditionalPeople(additionalPeople || [])
     
-    // Load focal point (default to center if not set)
+    // Load focal point (default to 1/3 from top if not set)
     setFocalPointX((photo as any).focal_x ?? 50)
-    setFocalPointY((photo as any).focal_y ?? 50)
+    setFocalPointY((photo as any).focal_y ?? 33)
     
     setEditingPhoto(photoId)
   }
@@ -401,7 +401,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
     setTagSearchTerm('')
     setShowTagDropdown(false)
     setFocalPointX(50)
-    setFocalPointY(50)
+    setFocalPointY(33)
   }
 
   const handleSaveEdit = async () => {
@@ -789,7 +789,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
                     src={photoUrl}
                     alt={photo.caption || 'Photo'}
                     className="w-full h-full object-cover"
-                    style={{ objectPosition: `${(photo as any).focal_x ?? 50}% ${(photo as any).focal_y ?? 50}%` }}
+                    style={{ objectPosition: `${(photo as any).focal_x ?? 50}% ${(photo as any).focal_y ?? 33}%` }}
                     onError={async (e) => {
                       console.error('Image load error for photo:', photo.id)
                       console.error('URL:', photoUrl)
@@ -1244,10 +1244,10 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
                           </span>
                           <button
                             type="button"
-                            onClick={() => { setFocalPointX(50); setFocalPointY(50) }}
+                            onClick={() => { setFocalPointX(50); setFocalPointY(33) }}
                             className="text-xs text-primary-600 hover:text-primary-700"
                           >
-                            Reset to center
+                            Reset to default
                           </button>
                         </div>
                         {/* Preview of how it will look in card */}
