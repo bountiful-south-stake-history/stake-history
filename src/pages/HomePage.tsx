@@ -171,7 +171,7 @@ export function HomePage() {
 
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-primary-700 mb-2">
-            Stake Leadership History
+            Stake History
           </h1>
           <p className="text-base md:text-lg text-gray-500">
             1958 to Present
