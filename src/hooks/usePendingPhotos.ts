@@ -98,7 +98,7 @@ export function usePendingPhotos() {
           if (photo.photo_url) {
             try {
               const url = new URL(photo.photo_url)
-              const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/photos\/(.+)/)
+              const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/photos\/(.+)/)
               if (pathMatch) {
                 const filePath = pathMatch[1]
                 console.log('Extracted file path for signed URL:', filePath)

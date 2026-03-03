@@ -437,7 +437,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
 
       if (fileToUpload) {
         const timestamp = Date.now()
-        const newPath = `photos/${editingPhoto}_${timestamp}.jpg`
+        const newPath = `photos/approved/${editingPhoto}_${timestamp}.jpg`
 
         const { error: uploadError } = await supabase.storage
           .from('photos')
@@ -455,7 +455,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
         if (oldPhotoUrl && oldPhotoUrl !== newPhotoUrl) {
           try {
             const url = new URL(oldPhotoUrl)
-            const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/photos\/(.+)/)
+            const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/photos\/(.+)/)
             if (pathMatch) {
               await supabase.storage.from('photos').remove([pathMatch[1]])
             }
@@ -465,19 +465,25 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
         }
       }
 
+      const updateData: Record<string, unknown> = {
+        caption: editCaption,
+        approximate_date: editDate || null,
+        event_context: editEvent || null,
+        submitter_name: editSubmitterName,
+        submitter_email: editSubmitterEmail,
+        additional_people: editAdditionalPeople.length > 0 ? JSON.stringify(editAdditionalPeople) : null,
+        focal_x: focalPointX,
+        focal_y: focalPointY,
+      }
+      // Only update photo_url when a new file was actually uploaded — avoids saving
+      // a short-lived signed URL (from the hook's state) back into the database.
+      if (fileToUpload) {
+        updateData.photo_url = newPhotoUrl
+      }
+
       const { error: updateError } = await supabase
         .from('photos')
-        .update({
-          caption: editCaption,
-          approximate_date: editDate || null,
-          event_context: editEvent || null,
-          submitter_name: editSubmitterName,
-          submitter_email: editSubmitterEmail,
-          additional_people: editAdditionalPeople.length > 0 ? JSON.stringify(editAdditionalPeople) : null,
-          photo_url: newPhotoUrl,
-          focal_x: focalPointX,
-          focal_y: focalPointY,
-        })
+        .update(updateData)
         .eq('id', editingPhoto)
 
       if (updateError) throw updateError
@@ -668,7 +674,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
         const photoUrl = photo.photo_url || (photo as any).file_url
         try {
           const url = new URL(photoUrl)
-          const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/photos\/(.+)/)
+          const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/photos\/(.+)/)
           if (pathMatch) {
             const filePath = pathMatch[1]
             await supabase.storage.from('photos').remove([filePath])
@@ -768,7 +774,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
             try {
               const url = new URL(photoUrl)
               // Extract path after /storage/v1/object/public/photos/
-              const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/photos\/(.+)/)
+              const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/photos\/(.+)/)
               if (pathMatch) {
                 filePath = pathMatch[1]
                 console.log('Extracted file path:', filePath)
