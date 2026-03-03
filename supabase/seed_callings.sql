@@ -3238,7 +3238,7 @@ BEGIN
     SELECT id INTO v_person_id FROM people WHERE full_name = 'Roger G. Shumway Jr.';
     SELECT id INTO v_position_id FROM positions WHERE title = 'Bishop';
     INSERT INTO callings (person_id, position_id, organization_id, presidency_number, sustained_date, sustained_precision, released_date, released_precision, notes)
-    VALUES (v_person_id, v_position_id, v_org_id, 17, '2019-08-18', 'exact', NULL, NULL, 'Current');
+    VALUES (v_person_id, v_position_id, v_org_id, 17, '2019-08-18', 'exact', '2023-11-26', 'exact', NULL);
 
     SELECT id INTO v_person_id FROM people WHERE full_name = 'Michael L. Van Dam';
     SELECT id INTO v_position_id FROM positions WHERE title = '1st Counselor';

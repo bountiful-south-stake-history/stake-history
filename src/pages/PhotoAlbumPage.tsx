@@ -115,8 +115,24 @@ export function PhotoAlbumPage() {
               console.error('Failed to parse additional_people:', e)
             }
 
+            // Generate a signed URL so photos display correctly with a private storage bucket
+            let displayUrl = photo.photo_url
+            if (photo.photo_url) {
+              try {
+                const url = new URL(photo.photo_url)
+                const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/photos\/(.+)/)
+                if (pathMatch) {
+                  const { data: signedData } = await supabase.storage
+                    .from('photos')
+                    .createSignedUrl(pathMatch[1], 86400) // 24-hour TTL
+                  if (signedData?.signedUrl) displayUrl = signedData.signedUrl
+                }
+              } catch { /* fall back to raw url */ }
+            }
+
             return {
               ...photo,
+              photo_url: displayUrl,
               taggedPeople,
               additionalPeople: additionalPeople || [],
             }

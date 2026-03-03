@@ -102,9 +102,24 @@ export function PhotoDetailPage() {
           additionalPeople = photoData.additional_people
         }
 
+        // Generate a signed URL so the photo displays correctly with a private storage bucket
+        let displayUrl = photoData.photo_url
+        if (photoData.photo_url) {
+          try {
+            const url = new URL(photoData.photo_url)
+            const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/photos\/(.+)/)
+            if (pathMatch) {
+              const { data: signedData } = await supabase.storage
+                .from('photos')
+                .createSignedUrl(pathMatch[1], 86400) // 24-hour TTL
+              if (signedData?.signedUrl) displayUrl = signedData.signedUrl
+            }
+          } catch { /* fall back to raw url */ }
+        }
+
         setPhoto({
           id: photoData.id,
-          photo_url: photoData.photo_url,
+          photo_url: displayUrl,
           caption: photoData.caption || '',
           approximate_date: photoData.approximate_date || undefined,
           event_context: photoData.event_context || undefined,
@@ -212,6 +227,14 @@ export function PhotoDetailPage() {
             src={photo.photo_url}
             alt={photo.caption || 'Photo'}
             className="max-w-full max-h-[600px] object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement
+              target.style.display = 'none'
+              const parent = target.parentElement
+              if (parent) {
+                parent.innerHTML = '<div class="text-gray-400 text-center p-8"><p class="font-medium">Image not available</p></div>'
+              }
+            }}
           />
         </div>
         <div className="p-6">
