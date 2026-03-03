@@ -71,28 +71,52 @@ export function usePersonPhotos(personId: string) {
           })
         }
         
-        const filteredPhotos = (photosData || [])
+        const approvedPhotos = (photosData || [])
           .map((item: any) => item.photos)
           .filter((photo: any) => photo && photo.status === 'approved')
-          .map((photo: any) => {
+
+        const filteredPhotos = await Promise.all(
+          approvedPhotos.map(async (photo: any) => {
             let additionalPeople: string[] = []
             try {
               if (photo.additional_people) {
-                additionalPeople = typeof photo.additional_people === 'string' 
-                  ? JSON.parse(photo.additional_people) 
+                additionalPeople = typeof photo.additional_people === 'string'
+                  ? JSON.parse(photo.additional_people)
                   : photo.additional_people
               }
             } catch (e) {
               console.error('Failed to parse additional_people:', e)
             }
+
+            // Generate a signed URL so photos work with a private storage bucket
+            let displayUrl = photo.photo_url
+            if (photo.photo_url) {
+              try {
+                const url = new URL(photo.photo_url)
+                const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/photos\/(.+)/)
+                if (pathMatch) {
+                  const { data: signedData, error: signedError } = await supabase.storage
+                    .from('photos')
+                    .createSignedUrl(pathMatch[1], 86400) // 24-hour TTL
+                  if (!signedError && signedData?.signedUrl) {
+                    displayUrl = signedData.signedUrl
+                  }
+                }
+              } catch {
+                // fall back to raw url
+              }
+            }
+
             return {
               ...photo,
-              file_url: photo.photo_url,
+              photo_url: displayUrl,
+              file_url: displayUrl,
               taggedPeople: taggedPeopleMap.get(photo.id) || [],
               additionalPeople: additionalPeople || [],
             }
           })
-        
+        )
+
         setPhotos(filteredPhotos)
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to fetch photos'))
