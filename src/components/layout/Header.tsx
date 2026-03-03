@@ -39,7 +39,7 @@ export function Header() {
             </Link>
             <button
               onClick={() => setShowAddModal(true)}
-              className="text-accent-400 hover:text-accent-300 transition-colors"
+              className="text-accent-500 hover:text-accent-400 transition-colors"
             >
               Add
             </button>
