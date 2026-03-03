@@ -30,7 +30,7 @@ export function NumberedList({ callings }: NumberedListProps) {
               <span className="font-bold text-primary-700 text-lg min-w-[3rem]">
                 {number}.
               </span>
-              <PortraitDisplay person={calling.person} />
+              <PortraitDisplay person={calling.person} personId={calling.person?.id || undefined} />
               <div className="flex-1">
                 <div className="font-semibold text-lg">
                   <PersonNameLink person={calling.person} className="text-gray-900" />

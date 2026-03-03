@@ -57,7 +57,7 @@ export function PresidencyCard({ presidencyNumber, callings, labelType = 'presid
     <>
       {/* Desktop view */}
       <div className="hidden md:flex items-center gap-3">
-        <PortraitDisplay person={calling.person} />
+        <PortraitDisplay person={calling.person} personId={calling.person?.id || undefined} />
         <div className="flex-1 min-w-0">
           <div className={`font-semibold ${isPresident ? 'text-lg' : 'text-base'} break-words`}>
             <PersonNameLink person={calling.person} className={isPresident ? 'text-primary-700' : 'text-gray-900'} />

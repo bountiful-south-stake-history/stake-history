@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import type { Person } from '../../lib/types'
 import { ContributionModal } from './ContributionModal'
 import { PortraitLightbox } from './PortraitLightbox'
@@ -7,9 +8,10 @@ interface PortraitDisplayProps {
   person: Person
   onUploadComplete?: () => void
   lightboxMode?: boolean
+  personId?: string
 }
 
-export function PortraitDisplay({ person, onUploadComplete, lightboxMode = false }: PortraitDisplayProps) {
+export function PortraitDisplay({ person, onUploadComplete, lightboxMode = false, personId }: PortraitDisplayProps) {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showLightbox, setShowLightbox] = useState(false)
   const [imageError, setImageError] = useState(false)
@@ -28,6 +30,24 @@ export function PortraitDisplay({ person, onUploadComplete, lightboxMode = false
     } else {
       window.location.reload()
     }
+  }
+
+  // When a real portrait exists and personId is provided → navigate to person page
+  if (showPortrait && personId) {
+    return (
+      <Link
+        to={`/person/${personId}`}
+        className="w-20 h-[100px] rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 block group ring-2 ring-transparent hover:ring-primary-400 transition-all duration-200"
+      >
+        <img
+          src={person.portrait_url!}
+          alt={`${person.display_name || person.full_name}`}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+          onError={() => setImageError(true)}
+          onLoad={() => setImageError(false)}
+        />
+      </Link>
+    )
   }
 
   return (
@@ -60,7 +80,6 @@ export function PortraitDisplay({ person, onUploadComplete, lightboxMode = false
                 setImageError(true)
               }}
               onLoad={() => {
-                // Reset error state if image loads successfully (e.g., after URL update)
                 setImageError(false)
               }}
             />
@@ -138,4 +157,3 @@ export function PortraitDisplay({ person, onUploadComplete, lightboxMode = false
     </>
   )
 }
-

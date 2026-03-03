@@ -4,12 +4,14 @@ import { useAuth } from '../../hooks/useAuth'
 import { useAdmin } from '../../hooks/useAdmin'
 import { AuthModal } from '../auth/AuthModal'
 import { UserMenu } from '../auth/UserMenu'
+import { PersonSearchModal } from '../people/PersonSearchModal'
 
 export function Header() {
   const { user, loading } = useAuth()
   const { isAdmin } = useAdmin()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   return (
     <header className="bg-primary-700 text-white shadow-md">
@@ -35,6 +37,12 @@ export function Header() {
             <Link to="/about" className="hover:text-accent-100 transition-colors">
               About
             </Link>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="text-accent-400 hover:text-accent-300 transition-colors"
+            >
+              Add
+            </button>
             {!loading && isAdmin && (
               <Link to="/admin" className="text-red-400 hover:text-red-300 transition-colors">
                 Admin
@@ -117,6 +125,15 @@ export function Header() {
               >
                 About
               </Link>
+              <button
+                onClick={() => {
+                  setShowAddModal(true)
+                  setMobileMenuOpen(false)
+                }}
+                className="text-left text-accent-400 hover:text-accent-300 transition-colors"
+              >
+                Add
+              </button>
               {!loading && isAdmin && (
                 <Link
                   to="/admin"
@@ -165,6 +182,9 @@ export function Header() {
           onClose={() => setShowAuthModal(false)}
           onSuccess={() => setShowAuthModal(false)}
         />
+      )}
+      {showAddModal && (
+        <PersonSearchModal onClose={() => setShowAddModal(false)} />
       )}
     </header>
   )
