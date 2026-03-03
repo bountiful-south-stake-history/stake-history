@@ -8,8 +8,9 @@ import { AdminPeopleTab } from './AdminPeopleTab'
 import { AdminCallingsTab } from './AdminCallingsTab'
 import { AdminTransitionsTab } from './AdminTransitionsTab'
 import { AdminUsersTab } from './AdminUsersTab'
+import { AdminSuggestionsTab } from './AdminSuggestionsTab'
 
-type MainTab = 'portraits' | 'corrections' | 'memories' | 'photos'
+type MainTab = 'portraits' | 'corrections' | 'memories' | 'photos' | 'suggestions'
 type ToolsTab = 'people' | 'callings' | 'transitions' | 'users'
 type AdminTab = MainTab | ToolsTab
 
@@ -24,6 +25,7 @@ export function AdminDashboard() {
     { id: 'corrections' as MainTab, baseLabel: 'Corrections', count: stats.pendingCorrections },
     { id: 'memories' as MainTab, baseLabel: 'Memories', count: stats.pendingMemories },
     { id: 'photos' as MainTab, baseLabel: 'Photos', count: stats.pendingPhotos },
+    { id: 'suggestions' as MainTab, baseLabel: 'Suggestions', count: stats.newSuggestions },
   ], [stats])
 
   const toolsTabs: { id: ToolsTab; baseLabel: string }[] = [
@@ -164,6 +166,7 @@ export function AdminDashboard() {
         {activeTab === 'corrections' && <AdminCorrectionsTab onActionComplete={refetchStats} />}
         {activeTab === 'memories' && <AdminMemoriesTab onActionComplete={refetchStats} />}
         {activeTab === 'photos' && <AdminPhotosTab onActionComplete={refetchStats} />}
+        {activeTab === 'suggestions' && <AdminSuggestionsTab onActionComplete={refetchStats} />}
         {activeTab === 'people' && <AdminPeopleTab onActionComplete={refetchStats} />}
         {activeTab === 'callings' && <AdminCallingsTab onActionComplete={refetchStats} />}
         {activeTab === 'transitions' && <AdminTransitionsTab onActionComplete={refetchStats} />}

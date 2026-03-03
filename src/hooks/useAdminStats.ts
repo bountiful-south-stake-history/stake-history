@@ -6,6 +6,7 @@ export interface AdminStats {
   pendingCorrections: number
   pendingMemories: number
   pendingPhotos: number
+  newSuggestions: number
 }
 
 export function useAdminStats() {
@@ -14,13 +15,14 @@ export function useAdminStats() {
     pendingCorrections: 0,
     pendingMemories: 0,
     pendingPhotos: 0,
+    newSuggestions: 0,
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
   const fetchStats = async () => {
     try {
-      const [portraitsResult, correctionsResult, memoriesResult, photosResult] = await Promise.all([
+      const [portraitsResult, correctionsResult, memoriesResult, photosResult, suggestionsResult] = await Promise.all([
         supabase
           .from('portrait_submissions')
           .select('id', { count: 'exact', head: true })
@@ -37,18 +39,24 @@ export function useAdminStats() {
           .from('photos')
           .select('id', { count: 'exact', head: true })
           .eq('status', 'pending'),
+        supabase
+          .from('suggestions')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'new'),
       ])
 
       const portraitCount = portraitsResult.count ?? 0
       const correctionCount = correctionsResult.count ?? 0
       const memoryCount = memoriesResult.count ?? 0
       const photoCount = photosResult.count ?? 0
+      const suggestionCount = suggestionsResult.count ?? 0
 
       console.log('Admin Stats:', {
         pendingPortraits: portraitCount,
         pendingCorrections: correctionCount,
         pendingMemories: memoryCount,
         pendingPhotos: photoCount,
+        newSuggestions: suggestionCount,
         portraitError: portraitsResult.error,
       })
 
@@ -57,6 +65,7 @@ export function useAdminStats() {
         pendingCorrections: correctionCount,
         pendingMemories: memoryCount,
         pendingPhotos: photoCount,
+        newSuggestions: suggestionCount,
       })
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch stats'))
