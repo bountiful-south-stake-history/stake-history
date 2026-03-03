@@ -79,7 +79,7 @@ export function PersonSearchModal({ onClose }: Props) {
       <div className="bg-white text-gray-900 rounded-xl shadow-xl w-full max-w-md animate-slideUp">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-800">Add Content</h2>
+          <h2 className="text-base font-semibold text-gray-800">Add a Portrait, Photo, or Memory — Find a Person</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
             <FaTimes />
           </button>
