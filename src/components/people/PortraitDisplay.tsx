@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { FaExpand } from 'react-icons/fa'
 import type { Person } from '../../lib/types'
 import { ContributionModal } from './ContributionModal'
 import { PortraitLightbox } from './PortraitLightbox'
@@ -83,21 +84,25 @@ export function PortraitDisplay({ person, onUploadComplete, lightboxMode = false
                 setImageError(false)
               }}
             />
-            {canUpload && (
+            {(lightboxMode || canUpload) && (
               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
+                {lightboxMode ? (
+                  <FaExpand className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                ) : (
+                  <svg
+                    className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                )}
               </div>
             )}
           </>
