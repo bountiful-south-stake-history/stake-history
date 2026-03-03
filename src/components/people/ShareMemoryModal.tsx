@@ -55,69 +55,7 @@ export function ShareMemoryModal({ taggedPeople, onClose }: ShareMemoryModalProp
   }
 
   if (taggedPeople.length === 0) {
-    // No tagged people - shouldn't happen, but handle gracefully
     return null
-  }
-
-  // Single person: show form directly
-  if (taggedPeople.length === 1) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 my-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Share a Memory</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Close"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-          {showSuccess ? (
-            <div className="text-center py-8">
-              <div className="mb-4">
-                <svg
-                  className="w-16 h-16 text-green-500 mx-auto"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Memory Submitted!</h3>
-              <p className="text-gray-600">
-                Your memory has been shared for {taggedPeople[0].display_name || taggedPeople[0].full_name}.
-              </p>
-            </div>
-          ) : (
-            <MultiPersonMemoryForm
-              taggedPeople={taggedPeople}
-              onSuccess={handleMemorySuccess}
-              onCancel={onClose}
-            />
-          )}
-        </div>
-      </div>
-    )
   }
 
   const formatNamesForHeader = (people: TaggedPerson[]): string => {
@@ -133,126 +71,140 @@ export function ShareMemoryModal({ taggedPeople, onClose }: ShareMemoryModalProp
     }
   }
 
+  const CloseIcon = () => (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+
+  // Success screen
   if (showSuccess) {
     const personCount = peopleForForm?.length || taggedPeople.length
-    
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <div className="text-center">
-            <div className="mb-4">
-              <svg
-                className="w-16 h-16 text-green-500 mx-auto"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 my-8">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg className="w-16 h-16 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Memory Submitted!</h2>
+              <p className="text-gray-600">
+                {peopleForForm
+                  ? `Your memory has been shared on ${formatNamesForHeader(peopleForForm)}.`
+                  : `Your memory has been shared for ${personCount} ${personCount === 1 ? 'person' : 'people'}.`}
+              </p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Memory Submitted!</h2>
-            <p className="text-gray-600">
-              {peopleForForm
-                ? `Your memory has been shared on ${formatNamesForHeader(peopleForForm)}.`
-                : `Your memory has been shared for ${personCount} ${personCount === 1 ? 'person' : 'people'}.`}
-            </p>
           </div>
         </div>
       </div>
     )
   }
 
+  // Single person: show form directly (scrollable backdrop pattern)
+  if (taggedPeople.length === 1) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 my-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Share a Memory</h2>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
+                <CloseIcon />
+              </button>
+            </div>
+            <MultiPersonMemoryForm
+              taggedPeople={taggedPeople}
+              onSuccess={handleMemorySuccess}
+              onCancel={onClose}
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Memory form step (after person selection) — scrollable backdrop pattern
   if (showMemoryForm && peopleForForm) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 my-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Share a Memory</h2>
-            <button
-              onClick={() => {
-                setShowMemoryForm(false)
-                setSelectedPersonIds([])
-              }}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Close"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 my-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Share a Memory</h2>
+              <button
+                onClick={() => { setShowMemoryForm(false); setSelectedPersonIds([]) }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+                <CloseIcon />
+              </button>
+            </div>
+            <MultiPersonMemoryForm
+              taggedPeople={peopleForForm}
+              onSuccess={handleMemorySuccess}
+              onCancel={() => { setShowMemoryForm(false); setSelectedPersonIds([]) }}
+            />
           </div>
-          <MultiPersonMemoryForm
-            taggedPeople={peopleForForm}
-            onSuccess={handleMemorySuccess}
-            onCancel={() => {
-              setShowMemoryForm(false)
-              setSelectedPersonIds([])
-            }}
-          />
         </div>
       </div>
     )
   }
 
+  // Person-selection screen — flex-column with pinned header/footer, scrollable list
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Share a Memory</h2>
-        <p className="text-gray-600 mb-6">Who is this memory about? (select one or more)</p>
-
-        <div className="space-y-2 mb-6">
-          {taggedPeople.map((person) => (
-            <label
-              key={person.id}
-              className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-            >
-              <input
-                type="checkbox"
-                checked={selectedPersonIds.includes(person.id)}
-                onChange={() => handleTogglePerson(person.id)}
-                className="mr-3 h-4 w-4 text-primary-600 focus:ring-primary-500 rounded border-gray-300"
-              />
-              <span className="text-gray-900">
-                {person.display_name || person.full_name}
-              </span>
-            </label>
-          ))}
-          <div className="border-t border-gray-200 my-2"></div>
-          <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={handleToggleAll}
-              className="mr-3 h-4 w-4 text-primary-600 focus:ring-primary-500 rounded border-gray-300"
-            />
-            <span className="text-gray-900">All people in this photo</span>
-          </label>
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full flex flex-col max-h-[85vh]">
+        {/* Pinned header */}
+        <div className="px-6 pt-6 pb-3 shrink-0">
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">Share a Memory</h2>
+          <p className="text-gray-600 text-sm">Who is this memory about? (select one or more)</p>
         </div>
 
-        {selectedPersonIds.length > 0 && (
-          <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
-            <p className="text-sm text-gray-700">
-              This memory will be shared on {formatNamesForHeader(taggedPeople.filter((p) => selectedPersonIds.includes(p.id)))}.
-            </p>
+        {/* Scrollable list + summary */}
+        <div className="overflow-y-auto flex-1 px-6 pb-2">
+          <div className="space-y-2">
+            <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={handleToggleAll}
+                className="mr-3 h-4 w-4 text-primary-600 focus:ring-primary-500 rounded border-gray-300"
+              />
+              <span className="text-gray-900 text-sm">All people in this photo</span>
+            </label>
+            <div className="border-t border-gray-200 my-1"></div>
+            {taggedPeople.map((person) => (
+              <label
+                key={person.id}
+                className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedPersonIds.includes(person.id)}
+                  onChange={() => handleTogglePerson(person.id)}
+                  className="mr-3 h-4 w-4 text-primary-600 focus:ring-primary-500 rounded border-gray-300"
+                />
+                <span className="text-gray-900 text-sm">
+                  {person.display_name || person.full_name}
+                </span>
+              </label>
+            ))}
           </div>
-        )}
 
-        <div className="flex gap-3 justify-end">
+          {selectedPersonIds.length > 0 && (
+            <div className="mt-3 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+              <p className="text-sm text-gray-700">
+                This memory will be shared on {formatNamesForHeader(taggedPeople.filter((p) => selectedPersonIds.includes(p.id)))}.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Pinned footer */}
+        <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -271,4 +223,3 @@ export function ShareMemoryModal({ taggedPeople, onClose }: ShareMemoryModalProp
     </div>
   )
 }
-
