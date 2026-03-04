@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { parseLocalDate } from '../../lib/utils'
 import { useOrganizationCallings } from '../../hooks/useOrganizationCallings'
 import { useOrganizations } from '../../hooks/useOrganizations'
 import { useAuth } from '../../hooks/useAuth'
@@ -392,10 +393,10 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600">{calling.position?.title}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">
-                            {calling.sustained_date ? new Date(calling.sustained_date).toLocaleDateString() : '-'}
+                            {calling.sustained_date ? parseLocalDate(calling.sustained_date).toLocaleDateString() : '-'}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600">
-                            {calling.released_date ? new Date(calling.released_date).toLocaleDateString() : 'Current'}
+                            {calling.released_date ? parseLocalDate(calling.released_date).toLocaleDateString() : 'Current'}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600">{calling.presidency_number || '-'}</td>
                           <td className="px-4 py-3 text-sm text-gray-500 italic">{calling.notes || '-'}</td>
@@ -540,13 +541,13 @@ export function AdminCallingsTab({ onActionComplete }: AdminCallingsTabProps) {
                       <div className="mb-2">
                         <span className="text-xs font-medium text-gray-500 uppercase">Sustained</span>
                         <div className="mt-1 text-sm text-gray-900">
-                          {calling.sustained_date ? new Date(calling.sustained_date).toLocaleDateString() : '-'}
+                          {calling.sustained_date ? parseLocalDate(calling.sustained_date).toLocaleDateString() : '-'}
                         </div>
                       </div>
                       <div className="mb-2">
                         <span className="text-xs font-medium text-gray-500 uppercase">Released</span>
                         <div className="mt-1 text-sm text-gray-900">
-                          {calling.released_date ? new Date(calling.released_date).toLocaleDateString() : 'Current'}
+                          {calling.released_date ? parseLocalDate(calling.released_date).toLocaleDateString() : 'Current'}
                         </div>
                       </div>
                       <div className="mb-2">
