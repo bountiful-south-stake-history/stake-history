@@ -7,7 +7,7 @@ export function Footer() {
             © {new Date().getFullYear()} Bountiful Utah South Stake
           </p>
           <p className="text-sm text-gray-300">
-            Historical records from 1958 to present
+            Historical records from 1945 to present
           </p>
         </div>
       </div>
