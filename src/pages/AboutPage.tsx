@@ -8,7 +8,7 @@ export function AboutPage() {
             The Bountiful Utah South Stake of The Church of Jesus Christ of Latter-day Saints was organized on April 20, 1958, from the Bountiful and South Davis stakes. The stake was divided on January 10, 1971, to form the Bountiful Center Stake (later renamed the Bountiful Utah Central Stake), establishing the current boundaries. The stake center was dedicated on October 17, 1971.
           </p>
           <p>
-            This website preserves and shares the history of our stake, documenting the faithful service of hundreds of individuals who have served in stake and ward callings since 1958.
+            This website preserves and shares the history of our stake, documenting the faithful service of hundreds of individuals who have served in stake and ward callings since 1945.
           </p>
         </div>
       </section>

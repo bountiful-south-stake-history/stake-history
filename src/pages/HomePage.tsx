@@ -174,7 +174,7 @@ export function HomePage() {
             Stake & Ward Leaders
           </h1>
           <p className="text-base md:text-lg text-gray-500">
-            1958 to Present
+            1945 to Present
           </p>
         </div>
 
