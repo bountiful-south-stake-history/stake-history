@@ -10,12 +10,6 @@ export function parseLocalDate(dateString: string): Date {
 export function formatDate(date: string, precision: 'exact' | 'month' | 'year'): string {
   const d = parseLocalDate(date)
   switch (precision) {
-    case 'exact':
-      return d.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
     case 'month':
       return d.toLocaleDateString('en-US', {
         year: 'numeric',
@@ -23,6 +17,13 @@ export function formatDate(date: string, precision: 'exact' | 'month' | 'year'):
       })
     case 'year':
       return d.getFullYear().toString()
+    case 'exact':
+    default:
+      return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
   }
 }
 
