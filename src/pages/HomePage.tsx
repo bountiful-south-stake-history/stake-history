@@ -176,6 +176,12 @@ export function HomePage() {
           <p className="text-base md:text-lg text-gray-500">
             1945 to Present
           </p>
+          <p className="italic text-[0.95rem] leading-relaxed max-w-[720px] mx-auto mt-3" style={{ color: '#5b6775', fontFamily: 'Georgia, serif' }}>
+            "Ye have not chosen me, but I have chosen you, and ordained you,
+            that ye should go and bring forth fruit, and that your fruit should remain…"
+            <br />
+            <span className="not-italic text-sm tracking-wide">John 15:16</span>
+          </p>
         </div>
 
         {error && (
