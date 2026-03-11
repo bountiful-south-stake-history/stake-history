@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
-import { ImageLightbox } from './ImageLightbox'
+import { usePhotoLikes } from '../../hooks/usePhotoLikes'
+import { PhotoLightbox } from '../people/PhotoLightbox'
+import { PhotoLikeButton } from '../people/PhotoLikeButton'
+import { ShareMemoryModal } from '../people/ShareMemoryModal'
 import compressImage from 'browser-image-compression'
 
 interface BuildingPhoto {
@@ -9,7 +12,11 @@ interface BuildingPhoto {
   photo_url: string
   caption?: string
   approximate_date?: string
+  event_context?: string
   submitter_name?: string
+  submitted_at?: string
+  taggedPeople: Array<{ id: string; display_name?: string; full_name: string }>
+  additionalPeople: string[]
 }
 
 interface BuildingPhotoAlbumProps {
@@ -19,10 +26,12 @@ interface BuildingPhotoAlbumProps {
 
 export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAlbumProps) {
   const { user } = useAuth()
+  const { likesMap, fetchLikesForPhotos, likePhoto, unlikePhoto } = usePhotoLikes()
   const [photos, setPhotos] = useState<BuildingPhoto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [lightboxImage, setLightboxImage] = useState<{ url: string; alt: string } | null>(null)
+  const [selectedPhoto, setSelectedPhoto] = useState<BuildingPhoto | null>(null)
+  const [shareMemoryPhoto, setShareMemoryPhoto] = useState<BuildingPhoto | null>(null)
   const [showSubmitModal, setShowSubmitModal] = useState(false)
 
   useEffect(() => {
@@ -36,16 +45,16 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
 
       const { data, error: fetchError } = await supabase
         .from('photos')
-        .select('id, photo_url, caption, approximate_date, submitter_name')
+        .select('id, photo_url, caption, approximate_date, event_context, submitter_name, submitted_at, additional_people')
         .eq('building_id', buildingId)
         .eq('status', 'approved')
         .order('submitted_at', { ascending: false })
 
       if (fetchError) throw fetchError
 
-      // Generate signed URLs for private bucket
-      const photosWithSignedUrls = await Promise.all(
-        (data || []).map(async (photo) => {
+      // Generate signed URLs and parse additional people
+      const photosWithDetails = await Promise.all(
+        (data || []).map(async (photo: any) => {
           let displayUrl = photo.photo_url
           if (photo.photo_url) {
             try {
@@ -59,11 +68,32 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
               }
             } catch { /* fall back to raw url */ }
           }
-          return { ...photo, photo_url: displayUrl }
+
+          let additionalPeople: string[] = []
+          try {
+            if (photo.additional_people) {
+              additionalPeople = typeof photo.additional_people === 'string'
+                ? JSON.parse(photo.additional_people)
+                : photo.additional_people
+            }
+          } catch { /* ignore parse errors */ }
+
+          return {
+            ...photo,
+            photo_url: displayUrl,
+            taggedPeople: [],
+            additionalPeople,
+          }
         })
       )
 
-      setPhotos(photosWithSignedUrls)
+      setPhotos(photosWithDetails)
+
+      // Fetch likes for all photos
+      if (photosWithDetails.length > 0) {
+        const photoIds = photosWithDetails.map((p) => p.id)
+        await fetchLikesForPhotos(photoIds)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load photos')
     } finally {
@@ -95,32 +125,98 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
       )}
 
       {photos.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {photos.map((photo) => (
             <div
               key={photo.id}
-              className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => setLightboxImage({ url: photo.photo_url, alt: photo.caption || buildingName })}
+              className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => setSelectedPhoto(photo)}
             >
-              <img
-                src={photo.photo_url}
-                alt={photo.caption || buildingName}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement
-                  target.style.display = 'none'
-                }}
-              />
+              <div className="aspect-video bg-gray-100 overflow-hidden">
+                <img
+                  src={photo.photo_url}
+                  alt={photo.caption || buildingName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    target.style.display = 'none'
+                  }}
+                />
+              </div>
+              <div className="p-4">
+                {photo.caption && (
+                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{photo.caption}</h3>
+                )}
+                {photo.approximate_date && (
+                  <p className="text-sm text-gray-600 mb-1">{photo.approximate_date}</p>
+                )}
+                {photo.event_context && (
+                  <p className="text-sm text-gray-600 mb-2">{photo.event_context}</p>
+                )}
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                  {photo.submitter_name && (
+                    <p className="text-xs text-gray-500">
+                      Shared by: {photo.submitter_name}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <PhotoLikeButton
+                      photoId={photo.id}
+                      likeCount={likesMap.get(photo.id)?.likeCount || 0}
+                      likedByUser={likesMap.get(photo.id)?.likedByUser || false}
+                      likedByNames={likesMap.get(photo.id)?.likedByNames || []}
+                      onToggleLike={async () => {
+                        const likeData = likesMap.get(photo.id)
+                        if (likeData?.likedByUser) {
+                          await unlikePhoto(photo.id)
+                        } else {
+                          await likePhoto(photo.id)
+                        }
+                        await fetchLikesForPhotos([photo.id])
+                      }}
+                      disabled={!user}
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShareMemoryPhoto(photo)
+                      }}
+                      className="text-xs text-primary-600 hover:text-primary-800 underline"
+                    >
+                      Share Memory
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {lightboxImage && (
-        <ImageLightbox
-          imageUrl={lightboxImage.url}
-          alt={lightboxImage.alt}
-          onClose={() => setLightboxImage(null)}
+      {selectedPhoto && (
+        <PhotoLightbox
+          photo={{ ...selectedPhoto, caption: selectedPhoto.caption || '' }}
+          onClose={() => setSelectedPhoto(null)}
+          likeCount={likesMap.get(selectedPhoto.id)?.likeCount || 0}
+          likedByUser={likesMap.get(selectedPhoto.id)?.likedByUser || false}
+          likedByNames={likesMap.get(selectedPhoto.id)?.likedByNames || []}
+          onToggleLike={async () => {
+            const likeData = likesMap.get(selectedPhoto.id)
+            if (likeData?.likedByUser) {
+              await unlikePhoto(selectedPhoto.id)
+            } else {
+              await likePhoto(selectedPhoto.id)
+            }
+            await fetchLikesForPhotos([selectedPhoto.id])
+          }}
+          onShareMemory={() => setShareMemoryPhoto(selectedPhoto)}
+        />
+      )}
+
+      {shareMemoryPhoto && (
+        <ShareMemoryModal
+          taggedPeople={shareMemoryPhoto.taggedPeople}
+          onClose={() => setShareMemoryPhoto(null)}
         />
       )}
 
