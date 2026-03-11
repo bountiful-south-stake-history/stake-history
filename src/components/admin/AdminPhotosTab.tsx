@@ -9,6 +9,7 @@ import { usePeopleSearch } from '../../hooks/usePeopleSearch'
 import { useAuth } from '../../hooks/useAuth'
 import compressImage from 'browser-image-compression'
 import type { Person } from '../../lib/types'
+import { buildings } from '../../data/archivesData'
 
 interface AdminPhotosTabProps {
   onActionComplete?: () => void
@@ -861,6 +862,11 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
               )}
               {photo.event_context && (
                 <p className="text-xs text-gray-500 mb-2">Event: {photo.event_context}</p>
+              )}
+              {(photo as any).building_id && (
+                <p className="text-xs text-primary-600 mb-2 font-medium">
+                  Building: {buildings.find(b => b.id === (photo as any).building_id)?.name || (photo as any).building_id}
+                </p>
               )}
               {(photo as any).person_id && (
                 <div className="mb-2">

@@ -4,12 +4,17 @@ import { supabase } from '../../lib/supabase'
 import { usePendingMemories } from '../../hooks/usePendingMemories'
 import { useApprovedMemories } from '../../hooks/useApprovedMemories'
 import { useAuth } from '../../hooks/useAuth'
+import { buildings } from '../../data/archivesData'
 
 const relationshipLabels: Record<string, string> = {
   family: 'Family Member',
   friend: 'Friend',
   served_together: 'Served Together',
   ward_member: 'Ward Member',
+  attended: 'Attended meetings here',
+  helped_build: 'Helped build/maintain',
+  grew_up: 'Grew up attending',
+  served_callings: 'Served in callings here',
   other: 'Other',
 }
 
@@ -18,8 +23,17 @@ const relationshipOptions = [
   { value: 'friend', label: 'Friend' },
   { value: 'served_together', label: 'Served Together' },
   { value: 'ward_member', label: 'Ward Member' },
+  { value: 'attended', label: 'Attended meetings here' },
+  { value: 'helped_build', label: 'Helped build/maintain' },
+  { value: 'grew_up', label: 'Grew up attending' },
+  { value: 'served_callings', label: 'Served in callings here' },
   { value: 'other', label: 'Other' },
 ]
+
+const getBuildingName = (buildingId: string): string => {
+  const building = buildings.find(b => b.id === buildingId)
+  return building?.name || buildingId
+}
 
 interface AdminMemoriesTabProps {
   onActionComplete?: () => void
@@ -295,7 +309,11 @@ export function AdminMemoriesTab({ onActionComplete }: AdminMemoriesTabProps) {
             <div className="mb-4">
               <h3 className="font-semibold text-gray-900 mb-2">
                 Memory for:{' '}
-                {memory.person_id ? (
+                {memory.building_id ? (
+                  <span className="text-primary-600">
+                    {getBuildingName(memory.building_id)} (Building)
+                  </span>
+                ) : memory.person_id ? (
                   <Link
                     to={`/person/${memory.person_id}`}
                     className="text-primary-600 hover:text-primary-700 hover:underline"

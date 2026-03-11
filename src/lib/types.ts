@@ -87,7 +87,8 @@ export interface Correction {
 
 export interface Memory {
   id: string
-  person_id: string
+  person_id?: string
+  building_id?: string
   content: string
   submitter_name: string
   submitter_email: string
@@ -105,6 +106,7 @@ export interface Photo {
   id: string
   photo_url: string
   caption?: string
+  building_id?: string
   additional_people?: string | string[]
   submitter_name: string
   submitter_email: string

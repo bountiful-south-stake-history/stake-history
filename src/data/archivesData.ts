@@ -148,4 +148,12 @@ export const buildings: Building[] = [
       }
     ],
   },
+  {
+    id: 'south-building',
+    name: '1500 S 600 E',
+    address: '1500 S 600 E, Bountiful UT',
+    dedicatedDate: '',
+    imageUrl: '',
+    documents: [],
+  },
 ]
