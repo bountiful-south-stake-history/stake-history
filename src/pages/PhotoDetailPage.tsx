@@ -21,6 +21,7 @@ interface Photo {
   event_context?: string
   submitter_name?: string
   submitted_at?: string
+  building_id?: string | null
   taggedPeople: TaggedPerson[]
   additionalPeople: string[]
 }
@@ -58,7 +59,8 @@ export function PhotoDetailPage() {
             approximate_date,
             event_context,
             additional_people,
-            submitted_at
+            submitted_at,
+            building_id
           `)
           .eq('id', photoId)
           .eq('status', 'approved')
@@ -125,6 +127,7 @@ export function PhotoDetailPage() {
           event_context: photoData.event_context || undefined,
           submitter_name: photoData.submitter_name || undefined,
           submitted_at: photoData.submitted_at || undefined,
+          building_id: photoData.building_id || null,
           taggedPeople,
           additionalPeople,
         })
@@ -197,11 +200,14 @@ export function PhotoDetailPage() {
     )
   }
 
+  const backLink = photo.building_id ? '/archives' : '/photos'
+  const backLabel = photo.building_id ? 'Back to Buildings' : 'Back to Photo Album'
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <Link
-          to="/photos"
+          to={backLink}
           className="flex items-center gap-2 text-gray-600 hover:text-primary-700 transition-colors"
         >
           <svg
@@ -217,7 +223,7 @@ export function PhotoDetailPage() {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          <span>Back to Photo Album</span>
+          <span>{backLabel}</span>
         </Link>
       </div>
 
