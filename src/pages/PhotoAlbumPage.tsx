@@ -72,6 +72,7 @@ export function PhotoAlbumPage() {
             submitted_at
           `)
           .eq('status', 'approved')
+          .is('building_id', null)
           .order('submitted_at', { ascending: false })
 
         if (photosError) throw photosError
