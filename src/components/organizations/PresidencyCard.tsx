@@ -75,6 +75,7 @@ export function PresidencyCard({ presidencyNumber, callings, labelType = 'presid
             {getPositionLabel(calling.position.position_type, calling.position.title)}:
           </span>
         </div>
+        <PortraitDisplay person={calling.person} personId={calling.person?.id || undefined} />
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-base text-primary-600 break-words">
             <PersonNameLink person={calling.person} className="text-primary-600" />
