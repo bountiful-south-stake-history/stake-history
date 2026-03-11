@@ -59,7 +59,23 @@ export function BuildingMemories({ buildingId, buildingName }: BuildingMemoriesP
       {memories.length > 0 && (
         <div className="space-y-4">
           {memories.map((memory) => (
-            <div key={memory.id} className="bg-white border border-gray-200 rounded-lg p-5">
+            <div
+              key={memory.id}
+              id={memory.photo_id ? `memory-photo-${memory.photo_id}` : undefined}
+              className="bg-white border border-gray-200 rounded-lg p-5"
+            >
+              {memory.photo_url && (
+                <div className="flex items-start gap-3 mb-3">
+                  <img
+                    src={memory.photo_url}
+                    alt={memory.photo_caption || 'Related photo'}
+                    className="w-16 h-16 rounded object-cover flex-shrink-0"
+                  />
+                  <p className="text-xs text-gray-400 italic pt-1">
+                    Re: {memory.photo_caption || 'Photo'}
+                  </p>
+                </div>
+              )}
               <p className="text-gray-700 whitespace-pre-wrap mb-3">{memory.content}</p>
               <div className="text-xs text-gray-500 space-y-0.5">
                 {memory.relationship && (
@@ -93,11 +109,13 @@ export function BuildingMemories({ buildingId, buildingName }: BuildingMemoriesP
 interface BuildingMemorySubmitModalProps {
   buildingId: string
   buildingName: string
+  photoId?: string
+  photoCaption?: string
   onClose: () => void
   onSuccess: () => void
 }
 
-export function BuildingMemorySubmitModal({ buildingId, buildingName, onClose, onSuccess }: BuildingMemorySubmitModalProps) {
+export function BuildingMemorySubmitModal({ buildingId, buildingName, photoId, photoCaption, onClose, onSuccess }: BuildingMemorySubmitModalProps) {
   const { user } = useAuth()
   const [relationship, setRelationship] = useState('')
   const [timePeriod, setTimePeriod] = useState('')
@@ -138,6 +156,7 @@ export function BuildingMemorySubmitModal({ buildingId, buildingName, onClose, o
     try {
       const { error: insertError } = await supabase.from('memories').insert({
         building_id: buildingId,
+        photo_id: photoId || null,
         content: memoryContent,
         submitter_name: submitterName,
         submitter_email: submitterEmail,
@@ -174,7 +193,10 @@ export function BuildingMemorySubmitModal({ buildingId, buildingName, onClose, o
         ) : (
           <>
             <h2 className="text-xl font-semibold text-gray-900 mb-1">Share a Memory</h2>
-            <p className="text-sm text-gray-600 mb-4">about {buildingName}</p>
+            <p className="text-sm text-gray-600 mb-4">
+              about {buildingName}
+              {photoCaption && <span className="block text-xs text-gray-400 mt-1">Re: {photoCaption}</span>}
+            </p>
 
             {error && (
               <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4">

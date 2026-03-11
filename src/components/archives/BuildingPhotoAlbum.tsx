@@ -31,8 +31,9 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedPhoto, setSelectedPhoto] = useState<BuildingPhoto | null>(null)
-  const [showShareMemory, setShowShareMemory] = useState(false)
+  const [shareMemoryPhoto, setShareMemoryPhoto] = useState<BuildingPhoto | null>(null)
   const [showSubmitModal, setShowSubmitModal] = useState(false)
+  const [memoryCountsMap, setMemoryCountsMap] = useState<Map<string, number>>(new Map())
 
   useEffect(() => {
     fetchPhotos()
@@ -89,10 +90,26 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
 
       setPhotos(photosWithDetails)
 
-      // Fetch likes for all photos
+      // Fetch likes and memory counts for all photos
       if (photosWithDetails.length > 0) {
         const photoIds = photosWithDetails.map((p) => p.id)
         await fetchLikesForPhotos(photoIds)
+
+        // Fetch memory counts per photo
+        const { data: memoryCounts } = await supabase
+          .from('memories')
+          .select('photo_id')
+          .eq('building_id', buildingId)
+          .eq('status', 'approved')
+          .in('photo_id', photoIds)
+
+        if (memoryCounts) {
+          const counts = new Map<string, number>()
+          memoryCounts.forEach((m: any) => {
+            if (m.photo_id) counts.set(m.photo_id, (counts.get(m.photo_id) || 0) + 1)
+          })
+          setMemoryCountsMap(counts)
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load photos')
@@ -179,12 +196,21 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        setShowShareMemory(true)
+                        setShareMemoryPhoto(photo)
                       }}
                       className="text-xs text-primary-600 hover:text-primary-800 underline"
                     >
                       Share Memory
                     </button>
+                    {(memoryCountsMap.get(photo.id) || 0) > 0 && (
+                      <a
+                        href={`#memory-photo-${photo.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-amber-600 hover:text-amber-800 font-medium"
+                      >
+                        {memoryCountsMap.get(photo.id)} {memoryCountsMap.get(photo.id) === 1 ? 'memory' : 'memories'}
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
@@ -209,16 +235,18 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
             }
             await fetchLikesForPhotos([selectedPhoto.id])
           }}
-          onShareMemory={() => setShowShareMemory(true)}
+          onShareMemory={() => setShareMemoryPhoto(selectedPhoto)}
         />
       )}
 
-      {showShareMemory && (
+      {shareMemoryPhoto && (
         <BuildingMemorySubmitModal
           buildingId={buildingId}
           buildingName={buildingName}
-          onClose={() => setShowShareMemory(false)}
-          onSuccess={() => setShowShareMemory(false)}
+          photoId={shareMemoryPhoto.id}
+          photoCaption={shareMemoryPhoto.caption}
+          onClose={() => setShareMemoryPhoto(null)}
+          onSuccess={() => setShareMemoryPhoto(null)}
         />
       )}
 

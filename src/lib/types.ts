@@ -90,6 +90,7 @@ export interface Memory {
   id: string
   person_id?: string
   building_id?: string
+  photo_id?: string
   content: string
   submitter_name: string
   submitter_email: string
