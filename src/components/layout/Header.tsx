@@ -32,7 +32,7 @@ export function Header() {
               Photo Album
             </Link>
             <Link to="/archives" className="hover:text-accent-100 transition-colors">
-              Archives
+              Buildings
             </Link>
             <Link to="/about" className="hover:text-accent-100 transition-colors">
               About
@@ -116,7 +116,7 @@ export function Header() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="hover:text-accent-100 transition-colors"
               >
-                Archives
+                Buildings
               </Link>
               <Link
                 to="/about"

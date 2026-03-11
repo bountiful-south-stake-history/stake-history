@@ -13,7 +13,7 @@ export function ArchivesPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-primary-700 mb-2">Archives</h1>
+        <h1 className="text-4xl font-bold text-primary-700 mb-2">Buildings</h1>
         <p className="text-lg text-gray-600">
           Historical documents, recordings, and photographs
         </p>
