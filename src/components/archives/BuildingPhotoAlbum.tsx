@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { usePhotoLikes } from '../../hooks/usePhotoLikes'
 import { PhotoLightbox } from '../people/PhotoLightbox'
 import { PhotoLikeButton } from '../people/PhotoLikeButton'
-import { ShareMemoryModal } from '../people/ShareMemoryModal'
+import { BuildingMemorySubmitModal } from './BuildingMemories'
 import compressImage from 'browser-image-compression'
 
 interface BuildingPhoto {
@@ -31,7 +31,7 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedPhoto, setSelectedPhoto] = useState<BuildingPhoto | null>(null)
-  const [shareMemoryPhoto, setShareMemoryPhoto] = useState<BuildingPhoto | null>(null)
+  const [showShareMemory, setShowShareMemory] = useState(false)
   const [showSubmitModal, setShowSubmitModal] = useState(false)
 
   useEffect(() => {
@@ -179,7 +179,7 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        setShareMemoryPhoto(photo)
+                        setShowShareMemory(true)
                       }}
                       className="text-xs text-primary-600 hover:text-primary-800 underline"
                     >
@@ -209,14 +209,16 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
             }
             await fetchLikesForPhotos([selectedPhoto.id])
           }}
-          onShareMemory={() => setShareMemoryPhoto(selectedPhoto)}
+          onShareMemory={() => setShowShareMemory(true)}
         />
       )}
 
-      {shareMemoryPhoto && (
-        <ShareMemoryModal
-          taggedPeople={shareMemoryPhoto.taggedPeople}
-          onClose={() => setShareMemoryPhoto(null)}
+      {showShareMemory && (
+        <BuildingMemorySubmitModal
+          buildingId={buildingId}
+          buildingName={buildingName}
+          onClose={() => setShowShareMemory(false)}
+          onSuccess={() => setShowShareMemory(false)}
         />
       )}
 

@@ -97,7 +97,7 @@ interface BuildingMemorySubmitModalProps {
   onSuccess: () => void
 }
 
-function BuildingMemorySubmitModal({ buildingId, buildingName, onClose, onSuccess }: BuildingMemorySubmitModalProps) {
+export function BuildingMemorySubmitModal({ buildingId, buildingName, onClose, onSuccess }: BuildingMemorySubmitModalProps) {
   const { user } = useAuth()
   const [relationship, setRelationship] = useState('')
   const [timePeriod, setTimePeriod] = useState('')
