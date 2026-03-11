@@ -13,6 +13,39 @@ export function AdminCorrectionsTab({ onActionComplete }: AdminCorrectionsTabPro
   const [processing, setProcessing] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  const isFamilysearchLink = (description: string) => description.startsWith('[FamilySearch Link] ')
+  const extractFamilysearchUrl = (description: string) => description.replace('[FamilySearch Link] ', '')
+
+  const handleApproveFamilysearch = async (correction: Correction) => {
+    setProcessing(correction.id)
+    try {
+      const url = extractFamilysearchUrl(correction.description)
+
+      const { error: updatePersonError } = await supabase
+        .from('people')
+        .update({ familysearch_url: url })
+        .eq('id', correction.person_id)
+
+      if (updatePersonError) throw updatePersonError
+
+      const { error: updateError } = await supabase
+        .from('correction_requests')
+        .update({
+          status: 'completed',
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', correction.id)
+
+      if (updateError) throw updateError
+      refetch()
+      onActionComplete?.()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to approve FamilySearch link')
+    } finally {
+      setProcessing(null)
+    }
+  }
+
   const handleMarkComplete = async (correctionId: string) => {
     setProcessing(correctionId)
     try {
@@ -110,6 +143,9 @@ export function AdminCorrectionsTab({ onActionComplete }: AdminCorrectionsTabPro
             const description = correction.description
             const truncated = description.length > 100 ? description.substring(0, 100) + '...' : description
 
+            const isFsLink = isFamilysearchLink(description)
+            const fsUrl = isFsLink ? extractFamilysearchUrl(description) : ''
+
             return (
               <tr key={correction.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
@@ -125,41 +161,59 @@ export function AdminCorrectionsTab({ onActionComplete }: AdminCorrectionsTabPro
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-1 text-xs font-medium rounded ${getTypeColor(correction.correction_type)}`}>
-                    {getTypeLabel(correction.correction_type)}
+                  <span className={`px-2 py-1 text-xs font-medium rounded ${isFsLink ? 'bg-green-100 text-green-800' : getTypeColor(correction.correction_type)}`}>
+                    {isFsLink ? 'FamilySearch' : getTypeLabel(correction.correction_type)}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900 max-w-md">
                   <div>
-                    {isExpanded ? description : truncated}
-                    {description.length > 100 && (
-                      <button
-                        onClick={() => setExpandedId(isExpanded ? null : correction.id)}
-                        className="ml-2 text-primary-600 hover:text-primary-700 text-xs"
-                      >
-                        {isExpanded ? 'Show less' : 'Read more'}
-                      </button>
+                    {isFsLink ? (
+                      <a href={fsUrl} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline break-all">
+                        {fsUrl}
+                      </a>
+                    ) : (
+                      <>
+                        {isExpanded ? description : truncated}
+                        {description.length > 100 && (
+                          <button
+                            onClick={() => setExpandedId(isExpanded ? null : correction.id)}
+                            className="ml-2 text-primary-600 hover:text-primary-700 text-xs"
+                          >
+                            {isExpanded ? 'Show less' : 'Read more'}
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900">{correction.submitter_name}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">{correction.submitter_email}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">
-                  {correction.created_at 
+                  {correction.created_at
                     ? new Date(correction.created_at).toLocaleDateString()
-                    : (correction as any).submitted_at 
+                    : (correction as any).submitted_at
                       ? new Date((correction as any).submitted_at).toLocaleDateString()
                       : 'N/A'}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => handleMarkComplete(correction.id)}
-                      disabled={processing === correction.id}
-                      className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
-                    >
-                      Mark Complete
-                    </button>
+                    {isFsLink ? (
+                      <button
+                        onClick={() => handleApproveFamilysearch(correction)}
+                        disabled={processing === correction.id}
+                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                      >
+                        Approve & Set Link
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleMarkComplete(correction.id)}
+                        disabled={processing === correction.id}
+                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                      >
+                        Mark Complete
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDismiss(correction.id)}
                       disabled={processing === correction.id}

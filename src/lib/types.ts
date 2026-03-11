@@ -12,6 +12,7 @@ export interface Person {
   portrait_uploaded_at?: string
   portrait_uploaded_by?: string | null
   portrait_submission_notes?: string
+  familysearch_url?: string
   redacted: boolean
   created_at: string
   updated_at: string
@@ -72,7 +73,7 @@ export interface OrganizationWithHistory extends Organization {
 export interface Correction {
   id: string
   person_id: string
-  correction_type: 'name_spelling' | 'date_correction' | 'other'
+  correction_type: 'name_spelling' | 'date_correction' | 'familysearch_link' | 'other'
   description: string
   submitter_name: string
   submitter_email: string

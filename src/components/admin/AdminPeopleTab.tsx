@@ -20,6 +20,7 @@ export function AdminPeopleTab({ onActionComplete }: AdminPeopleTabProps) {
     birth_date: '',
     death_date: '',
     bio: '',
+    familysearch_url: '',
   })
 
   const filteredPeople = people.filter((person) =>
@@ -37,6 +38,7 @@ export function AdminPeopleTab({ onActionComplete }: AdminPeopleTabProps) {
       birth_date: person.birth_date || '',
       death_date: person.death_date || '',
       bio: person.bio || '',
+      familysearch_url: (person as any).familysearch_url || '',
     })
   }
 
@@ -49,6 +51,7 @@ export function AdminPeopleTab({ onActionComplete }: AdminPeopleTabProps) {
       birth_date: '',
       death_date: '',
       bio: '',
+      familysearch_url: '',
     })
   }
 
@@ -63,6 +66,7 @@ export function AdminPeopleTab({ onActionComplete }: AdminPeopleTabProps) {
       if (editData.birth_date) updateData.birth_date = editData.birth_date || null
       if (editData.death_date) updateData.death_date = editData.death_date || null
       if (editData.bio.trim()) updateData.bio = editData.bio.trim()
+      updateData.familysearch_url = editData.familysearch_url.trim() || null
 
       const { error: updateError } = await supabase
         .from('people')

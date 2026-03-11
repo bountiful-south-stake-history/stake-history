@@ -11,11 +11,11 @@ interface ContributionModalProps {
   person: Person
   onUploadComplete: () => void
   onCancel: () => void
-  initialType?: 'portrait' | 'correction' | 'memory' | 'photos'
+  initialType?: 'portrait' | 'correction' | 'memory' | 'photos' | 'familysearch'
   onOpenSignIn?: () => void
 }
 
-type ContributionType = 'portrait' | 'correction' | 'memory' | 'photos'
+type ContributionType = 'portrait' | 'correction' | 'memory' | 'photos' | 'familysearch'
 
 const relationshipOptions = [
   { value: 'family', label: 'Family Member' },
@@ -34,6 +34,7 @@ interface FormErrors {
   relationship?: string
   photos?: string
   photoCaptions?: Record<number, string>
+  familysearchUrl?: string
   password?: string
   confirmPassword?: string
 }
@@ -55,6 +56,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
   const [submitterPhone, setSubmitterPhone] = useState('')
   const [correctionType, setCorrectionType] = useState<'name_spelling' | 'date_correction' | 'other'>('other')
   const [correctionDescription, setCorrectionDescription] = useState('')
+  const [familysearchUrl, setFamilysearchUrl] = useState('')
   const [relationship, setRelationship] = useState('')
   const [timePeriod, setTimePeriod] = useState('')
   const [memoryContent, setMemoryContent] = useState('')
@@ -405,6 +407,8 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
       return baseValid && memoryContent.trim() !== '' && memoryContent.length <= MAX_MEMORY_LENGTH
     } else if (contributionType === 'photos') {
       return baseValid && photoFiles.length > 0 && photoFiles.every(p => p.caption.trim() !== '')
+    } else if (contributionType === 'familysearch') {
+      return baseValid && familysearchUrl.trim() !== ''
     }
     return false
   }
@@ -920,6 +924,43 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
     }
   }
 
+  const handleFamilysearchSubmit = async () => {
+    if (!validateForm()) return
+
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      // Normalize: accept either a full URL or just the person ID
+      let url = familysearchUrl.trim()
+      if (!url.startsWith('http')) {
+        url = `https://www.familysearch.org/en/tree/person/details/${url}`
+      }
+
+      const { error: insertError } = await supabase.from('correction_requests').insert({
+        person_id: person.id,
+        correction_type: 'other',
+        description: `[FamilySearch Link] ${url}`,
+        submitter_name: submitterName,
+        submitter_email: submitterEmail,
+        submitter_phone: submitterPhone || null,
+        status: 'pending',
+      })
+
+      if (insertError) throw insertError
+
+      setSuccess(true)
+      setShowSuccessModal(true)
+
+      if (registerAlso) {
+        await attemptRegistration()
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit FamilySearch link')
+      setSubmitting(false)
+    }
+  }
+
   const handleMemorySubmit = async () => {
     if (!validateForm()) {
       return
@@ -1152,6 +1193,8 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
       handleMemorySubmit()
     } else if (contributionType === 'photos') {
       handlePhotosSubmit()
+    } else if (contributionType === 'familysearch') {
+      handleFamilysearchSubmit()
     }
   }
 
@@ -1161,6 +1204,8 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
         return 'Your portrait has been submitted successfully. All submissions are reviewed by an administrator before appearing on the site. This usually happens within a few days. Please don\'t resubmit — we\'ve got it!'
       case 'correction':
         return 'Your correction has been submitted successfully. An administrator will review it shortly. Thank you for helping us keep our records accurate!'
+      case 'familysearch':
+        return 'Your FamilySearch link has been submitted successfully. An administrator will review and link it shortly. Thank you!'
       case 'memory':
         return 'Your memory has been submitted successfully. All submissions are reviewed by an administrator before appearing on the site. This usually happens within a few days. Please don\'t resubmit — we\'ve got it!'
       case 'photos':
@@ -1177,6 +1222,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
     { id: 'portrait', label: 'Portrait' },
     { id: 'photos', label: 'Photos' },
     { id: 'memory', label: 'Memory' },
+    { id: 'familysearch', label: 'FamilySearch' },
     { id: 'correction', label: 'Correction' },
   ] as const
 
@@ -1685,6 +1731,52 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {contributionType === 'familysearch' && (
+              <div className="border-b border-gray-200 pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  FamilySearch Link
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Help us connect {person.display_name || person.full_name} to their FamilySearch profile.
+                  Paste the full URL or just the person ID (e.g., KWCZ-ZYH).
+                </p>
+                {person.familysearch_url && (
+                  <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                    <p className="text-sm text-green-800">
+                      This person already has a FamilySearch link. Submit a new one only if the current link is incorrect.
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <label htmlFor="familysearch-url" className="block text-sm font-medium text-gray-700 mb-1">
+                    FamilySearch URL or Person ID <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="familysearch-url"
+                    value={familysearchUrl}
+                    onChange={(e) => {
+                      setFamilysearchUrl(e.target.value)
+                      if (formErrors.familysearchUrl) {
+                        setFormErrors({ ...formErrors, familysearchUrl: undefined })
+                      }
+                    }}
+                    placeholder="https://www.familysearch.org/en/tree/person/details/KWCZ-ZYH"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                      formErrors.familysearchUrl ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    disabled={submitting || success}
+                  />
+                  {formErrors.familysearchUrl && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.familysearchUrl}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    You can paste the full FamilySearch URL or just the person ID like KWCZ-ZYH
+                  </p>
+                </div>
               </div>
             )}
 
