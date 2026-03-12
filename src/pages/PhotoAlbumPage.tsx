@@ -389,26 +389,31 @@ export function PhotoAlbumPage() {
         </div>
       )}
 
-      {selectedPhoto && (
-        <PhotoLightbox
-          photo={selectedPhoto}
-          onClose={() => setSelectedPhoto(null)}
-          likeCount={likesMap.get(selectedPhoto.id)?.likeCount || 0}
-          likedByUser={likesMap.get(selectedPhoto.id)?.likedByUser || false}
-          likedByNames={likesMap.get(selectedPhoto.id)?.likedByNames || []}
-          onToggleLike={async () => {
-            const likeData = likesMap.get(selectedPhoto.id)
-            if (likeData?.likedByUser) {
-              await unlikePhoto(selectedPhoto.id)
-            } else {
-              await likePhoto(selectedPhoto.id)
-            }
-            // Refetch likes to get updated names
-            await fetchLikesForPhotos([selectedPhoto.id])
-          }}
-          onShareMemory={() => setShareMemoryPhoto(selectedPhoto)}
-        />
-      )}
+      {selectedPhoto && (() => {
+        const selectedIndex = filteredAndSortedPhotos.findIndex(p => p.id === selectedPhoto.id)
+        return (
+          <PhotoLightbox
+            photo={selectedPhoto}
+            onClose={() => setSelectedPhoto(null)}
+            likeCount={likesMap.get(selectedPhoto.id)?.likeCount || 0}
+            likedByUser={likesMap.get(selectedPhoto.id)?.likedByUser || false}
+            likedByNames={likesMap.get(selectedPhoto.id)?.likedByNames || []}
+            onToggleLike={async () => {
+              const likeData = likesMap.get(selectedPhoto.id)
+              if (likeData?.likedByUser) {
+                await unlikePhoto(selectedPhoto.id)
+              } else {
+                await likePhoto(selectedPhoto.id)
+              }
+              // Refetch likes to get updated names
+              await fetchLikesForPhotos([selectedPhoto.id])
+            }}
+            onShareMemory={() => setShareMemoryPhoto(selectedPhoto)}
+            onPrev={selectedIndex > 0 ? () => setSelectedPhoto(filteredAndSortedPhotos[selectedIndex - 1]) : undefined}
+            onNext={selectedIndex < filteredAndSortedPhotos.length - 1 ? () => setSelectedPhoto(filteredAndSortedPhotos[selectedIndex + 1]) : undefined}
+          />
+        )
+      })()}
 
       {shareMemoryPhoto && (
         <ShareMemoryModal

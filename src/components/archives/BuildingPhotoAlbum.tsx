@@ -219,25 +219,30 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
         </div>
       )}
 
-      {selectedPhoto && (
-        <PhotoLightbox
-          photo={{ ...selectedPhoto, caption: selectedPhoto.caption || '' }}
-          onClose={() => setSelectedPhoto(null)}
-          likeCount={likesMap.get(selectedPhoto.id)?.likeCount || 0}
-          likedByUser={likesMap.get(selectedPhoto.id)?.likedByUser || false}
-          likedByNames={likesMap.get(selectedPhoto.id)?.likedByNames || []}
-          onToggleLike={async () => {
-            const likeData = likesMap.get(selectedPhoto.id)
-            if (likeData?.likedByUser) {
-              await unlikePhoto(selectedPhoto.id)
-            } else {
-              await likePhoto(selectedPhoto.id)
-            }
-            await fetchLikesForPhotos([selectedPhoto.id])
-          }}
-          onShareMemory={() => setShareMemoryPhoto(selectedPhoto)}
-        />
-      )}
+      {selectedPhoto && (() => {
+        const selectedIndex = photos.findIndex(p => p.id === selectedPhoto.id)
+        return (
+          <PhotoLightbox
+            photo={{ ...selectedPhoto, caption: selectedPhoto.caption || '' }}
+            onClose={() => setSelectedPhoto(null)}
+            likeCount={likesMap.get(selectedPhoto.id)?.likeCount || 0}
+            likedByUser={likesMap.get(selectedPhoto.id)?.likedByUser || false}
+            likedByNames={likesMap.get(selectedPhoto.id)?.likedByNames || []}
+            onToggleLike={async () => {
+              const likeData = likesMap.get(selectedPhoto.id)
+              if (likeData?.likedByUser) {
+                await unlikePhoto(selectedPhoto.id)
+              } else {
+                await likePhoto(selectedPhoto.id)
+              }
+              await fetchLikesForPhotos([selectedPhoto.id])
+            }}
+            onShareMemory={() => setShareMemoryPhoto(selectedPhoto)}
+            onPrev={selectedIndex > 0 ? () => setSelectedPhoto(photos[selectedIndex - 1]) : undefined}
+            onNext={selectedIndex < photos.length - 1 ? () => setSelectedPhoto(photos[selectedIndex + 1]) : undefined}
+          />
+        )
+      })()}
 
       {shareMemoryPhoto && (
         <BuildingMemorySubmitModal
