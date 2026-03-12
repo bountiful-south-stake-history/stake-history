@@ -36,6 +36,8 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
   const [memoryCountsMap, setMemoryCountsMap] = useState<Map<string, number>>(new Map())
 
   useEffect(() => {
+    setPhotos([])
+    setMemoryCountsMap(new Map())
     fetchPhotos()
   }, [buildingId])
 

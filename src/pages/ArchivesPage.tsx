@@ -175,7 +175,7 @@ export function ArchivesPage() {
         {/* Photo Album - requires sign-in */}
         <section className="mb-8 border-t border-gray-200 pt-6">
           {!authLoading && user ? (
-            <BuildingPhotoAlbum buildingId={activeBuilding.id} buildingName={activeBuilding.name} />
+            <BuildingPhotoAlbum key={activeBuilding.id} buildingId={activeBuilding.id} buildingName={activeBuilding.name} />
           ) : !authLoading ? (
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Photos</h3>
@@ -195,7 +195,7 @@ export function ArchivesPage() {
         {/* Memories - requires sign-in */}
         <section className="mb-8 border-t border-gray-200 pt-6">
           {!authLoading && user ? (
-            <BuildingMemories buildingId={activeBuilding.id} buildingName={activeBuilding.name} />
+            <BuildingMemories key={activeBuilding.id} buildingId={activeBuilding.id} buildingName={activeBuilding.name} />
           ) : !authLoading ? (
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Memories</h3>
