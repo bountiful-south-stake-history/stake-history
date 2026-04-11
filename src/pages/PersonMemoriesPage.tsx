@@ -138,8 +138,9 @@ export function PersonMemoriesPage() {
                       </svg>
                       View on FamilySearch
                     </a>
-                    <p className="block md:hidden text-xs text-gray-400 mt-0.5">
-                      Press & hold the link, then choose "Browser"
+                    <p className="block md:hidden text-sm text-gray-500 mt-1 leading-snug">
+                      Press & hold the link,<br />
+                      then choose "Browser"
                     </p>
                   </>
                 )}
