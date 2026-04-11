@@ -137,6 +137,9 @@ export function PersonMemoriesPage() {
                     </svg>
                     View on FamilySearch
                   </a>
+                  <p className="block md:hidden text-xs text-gray-400 mt-0.5">
+                    Press & hold the link, then choose "Browser"
+                  </p>
                 )}
               </div>
               {!person.redacted && (
