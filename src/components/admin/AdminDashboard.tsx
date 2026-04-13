@@ -64,7 +64,12 @@ export function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-primary-700 mb-6">Admin Dashboard</h1>
+      <div className="flex items-baseline justify-between mb-6">
+        <h1 className="text-3xl font-bold text-primary-700">Admin Dashboard</h1>
+        {!statsLoading && stats.totalUsers > 0 && (
+          <span className="text-sm text-gray-500">{stats.totalUsers} registered users</span>
+        )}
+      </div>
 
       <div className="border-b border-gray-200 mb-6">
         <div className="flex flex-col md:flex-row gap-2">
