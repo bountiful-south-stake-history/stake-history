@@ -64,53 +64,84 @@ export function AdminSuggestionsTab({ onActionComplete }: Props) {
         </button>
       </div>
 
-      {/* Table */}
+      {/* Content */}
       {suggestions.length === 0 ? (
         <div className="text-center py-16 text-gray-400">No suggestions found.</div>
       ) : (
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 w-36">Date</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 w-44">From</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Suggestion</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 w-28">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 w-32">Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {suggestions.map((s) => (
-                <tr
-                  key={s.id}
-                  onClick={() => setSelectedSuggestion(s)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                    {formatDate(s.created_at)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-gray-700">{s.email || <span className="text-gray-400 italic">anonymous</span>}</span>
-                  </td>
-                  <td className="px-4 py-3 text-accent-600 max-w-xs">
-                    <span className="line-clamp-2">{s.suggestion}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>
-                      {STATUS_LABELS[s.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 max-w-xs">
-                    <span className="line-clamp-1">{s.admin_notes || ''}</span>
-                  </td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-36">Date</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-44">From</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Suggestion</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-28">Status</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-32">Notes</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
-            {suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {suggestions.map((s) => (
+                  <tr
+                    key={s.id}
+                    onClick={() => setSelectedSuggestion(s)}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      {formatDate(s.created_at)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-gray-700">{s.email || <span className="text-gray-400 italic">anonymous</span>}</span>
+                    </td>
+                    <td className="px-4 py-3 text-accent-600 max-w-xs">
+                      <span className="line-clamp-2">{s.suggestion}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>
+                        {STATUS_LABELS[s.status]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 max-w-xs">
+                      <span className="line-clamp-1">{s.admin_notes || ''}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
+              {suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}
+            </div>
           </div>
-        </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {suggestions.map((s) => (
+              <div
+                key={s.id}
+                onClick={() => setSelectedSuggestion(s)}
+                className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer active:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[s.status]}`}>
+                    {STATUS_LABELS[s.status]}
+                  </span>
+                  <span className="text-xs text-gray-400">{formatDate(s.created_at)}</span>
+                </div>
+                <p className="text-sm text-accent-600 line-clamp-3 mb-2">{s.suggestion}</p>
+                <p className="text-xs text-gray-500">
+                  {s.email || <span className="italic">anonymous</span>}
+                </p>
+                {s.admin_notes && (
+                  <p className="text-xs text-gray-400 mt-1 line-clamp-1">Note: {s.admin_notes}</p>
+                )}
+              </div>
+            ))}
+            <div className="text-xs text-gray-500 text-center py-1">
+              {suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Detail Modal */}

@@ -123,111 +123,208 @@ export function AdminCorrectionsTab({ onActionComplete }: AdminCorrectionsTabPro
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full bg-white border border-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Person/Org</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted By</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {corrections.map((correction) => {
-            const person = (correction as any).person
-            const isExpanded = expandedId === correction.id
-            const description = correction.description
-            const truncated = description.length > 100 ? description.substring(0, 100) + '...' : description
+    <div>
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="min-w-full bg-white border border-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Person/Org</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted By</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {corrections.map((correction) => {
+              const person = (correction as any).person
+              const isExpanded = expandedId === correction.id
+              const description = correction.description
+              const truncated = description.length > 100 ? description.substring(0, 100) + '...' : description
 
-            const isFsLink = isFamilysearchLink(description)
-            const fsUrl = isFsLink ? extractFamilysearchUrl(description) : ''
+              const isFsLink = isFamilysearchLink(description)
+              const fsUrl = isFsLink ? extractFamilysearchUrl(description) : ''
 
-            return (
-              <tr key={correction.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3">
-                  {person ? (
-                    <Link
-                      to={`/person/${correction.person_id}`}
-                      className="text-primary-600 hover:text-primary-700 hover:underline"
-                    >
-                      {person.display_name || person.full_name}
-                    </Link>
-                  ) : (
-                    <span className="text-gray-600">Person ID: {correction.person_id}</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-1 text-xs font-medium rounded ${isFsLink ? 'bg-green-100 text-green-800' : getTypeColor(correction.correction_type)}`}>
-                    {isFsLink ? 'FamilySearch' : getTypeLabel(correction.correction_type)}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900 max-w-md">
-                  <div>
-                    {isFsLink ? (
-                      <a href={fsUrl} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline break-all">
-                        {fsUrl}
-                      </a>
+              return (
+                <tr key={correction.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    {person ? (
+                      <Link
+                        to={`/person/${correction.person_id}`}
+                        className="text-primary-600 hover:text-primary-700 hover:underline"
+                      >
+                        {person.display_name || person.full_name}
+                      </Link>
                     ) : (
-                      <>
-                        {isExpanded ? description : truncated}
-                        {description.length > 100 && (
-                          <button
-                            onClick={() => setExpandedId(isExpanded ? null : correction.id)}
-                            className="ml-2 text-primary-600 hover:text-primary-700 text-xs"
-                          >
-                            {isExpanded ? 'Show less' : 'Read more'}
-                          </button>
-                        )}
-                      </>
+                      <span className="text-gray-600">Person ID: {correction.person_id}</span>
                     )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900">{correction.submitter_name}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">{correction.submitter_email}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${isFsLink ? 'bg-green-100 text-green-800' : getTypeColor(correction.correction_type)}`}>
+                      {isFsLink ? 'FamilySearch' : getTypeLabel(correction.correction_type)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 max-w-md">
+                    <div>
+                      {isFsLink ? (
+                        <a href={fsUrl} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline break-all">
+                          {fsUrl}
+                        </a>
+                      ) : (
+                        <>
+                          {isExpanded ? description : truncated}
+                          {description.length > 100 && (
+                            <button
+                              onClick={() => setExpandedId(isExpanded ? null : correction.id)}
+                              className="ml-2 text-primary-600 hover:text-primary-700 text-xs"
+                            >
+                              {isExpanded ? 'Show less' : 'Read more'}
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900">{correction.submitter_name}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{correction.submitter_email}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {correction.created_at
+                      ? new Date(correction.created_at).toLocaleDateString()
+                      : (correction as any).submitted_at
+                        ? new Date((correction as any).submitted_at).toLocaleDateString()
+                        : 'N/A'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      {isFsLink ? (
+                        <button
+                          onClick={() => handleApproveFamilysearch(correction)}
+                          disabled={processing === correction.id}
+                          className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                        >
+                          Approve & Set Link
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleMarkComplete(correction.id)}
+                          disabled={processing === correction.id}
+                          className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                        >
+                          Mark Complete
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDismiss(correction.id)}
+                        disabled={processing === correction.id}
+                        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3">
+        {corrections.map((correction) => {
+          const person = (correction as any).person
+          const isExpanded = expandedId === correction.id
+          const description = correction.description
+          const truncated = description.length > 100 ? description.substring(0, 100) + '...' : description
+
+          const isFsLink = isFamilysearchLink(description)
+          const fsUrl = isFsLink ? extractFamilysearchUrl(description) : ''
+
+          return (
+            <div key={correction.id} className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className={`px-2 py-0.5 text-xs font-medium rounded ${isFsLink ? 'bg-green-100 text-green-800' : getTypeColor(correction.correction_type)}`}>
+                  {isFsLink ? 'FamilySearch' : getTypeLabel(correction.correction_type)}
+                </span>
+                <span className="text-xs text-gray-400">
                   {correction.created_at
                     ? new Date(correction.created_at).toLocaleDateString()
                     : (correction as any).submitted_at
                       ? new Date((correction as any).submitted_at).toLocaleDateString()
                       : 'N/A'}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    {isFsLink ? (
+                </span>
+              </div>
+
+              <div className="mb-2">
+                {person ? (
+                  <Link
+                    to={`/person/${correction.person_id}`}
+                    className="text-sm font-medium text-primary-600 hover:underline"
+                  >
+                    {person.display_name || person.full_name}
+                  </Link>
+                ) : (
+                  <span className="text-sm text-gray-600">Person ID: {correction.person_id}</span>
+                )}
+              </div>
+
+              <div className="text-sm text-gray-900 mb-3">
+                {isFsLink ? (
+                  <a href={fsUrl} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline break-all">
+                    {fsUrl}
+                  </a>
+                ) : (
+                  <>
+                    {isExpanded ? description : truncated}
+                    {description.length > 100 && (
                       <button
-                        onClick={() => handleApproveFamilysearch(correction)}
-                        disabled={processing === correction.id}
-                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                        onClick={() => setExpandedId(isExpanded ? null : correction.id)}
+                        className="ml-2 text-primary-600 hover:text-primary-700 text-xs"
                       >
-                        Approve & Set Link
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleMarkComplete(correction.id)}
-                        disabled={processing === correction.id}
-                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
-                      >
-                        Mark Complete
+                        {isExpanded ? 'Show less' : 'Read more'}
                       </button>
                     )}
-                    <button
-                      onClick={() => handleDismiss(correction.id)}
-                      disabled={processing === correction.id}
-                      className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                  </>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-500 mb-3">
+                By {correction.submitter_name} ({correction.submitter_email})
+              </p>
+
+              <div className="flex gap-2 flex-wrap">
+                {isFsLink ? (
+                  <button
+                    onClick={() => handleApproveFamilysearch(correction)}
+                    disabled={processing === correction.id}
+                    className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                  >
+                    Approve & Set Link
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleMarkComplete(correction.id)}
+                    disabled={processing === correction.id}
+                    className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                  >
+                    Mark Complete
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDismiss(correction.id)}
+                  disabled={processing === correction.id}
+                  className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
