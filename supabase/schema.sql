@@ -402,7 +402,7 @@ BEGIN
     -- Wards
     INSERT INTO organizations (name, short_name, org_type, parent_org_id, organized_date, sort_order) VALUES
     ('Bountiful 4th Ward', '4th Ward', 'ward', stake_id, '1904-03-06', 20),
-    ('Bountiful 7th Ward', '7th Ward', 'ward', stake_id, '1942-03-22', 21),
+    ('Bountiful 7th Ward', '7th Ward', 'ward', stake_id, '1952-03-16', 21),
     ('Bountiful 14th Ward', '14th Ward', 'ward', stake_id, '1956-12-30', 22),
     ('Bountiful 15th Ward', '15th Ward', 'ward', stake_id, '1957-04-21', 23),
     ('Bountiful 20th Ward', '20th Ward', 'ward', stake_id, '1961-04-30', 24),
