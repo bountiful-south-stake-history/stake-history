@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { dedicationSpeakers, buildings } from '../data/archivesData'
 import { SpeakerCard } from '../components/archives/SpeakerCard'
@@ -16,11 +17,28 @@ const tabLabels: Record<string, string> = {
 
 export function ArchivesPage() {
   const { user, loading: authLoading } = useAuth()
-  const [activeTab, setActiveTab] = useState(buildings[0].id)
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [lightboxImage, setLightboxImage] = useState<{ url: string; alt: string } | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
 
-  const activeBuilding = buildings.find(b => b.id === activeTab) || buildings[0]
+  // Select the active building from the ?building= param. A missing or unknown
+  // value falls back to the first building rather than blanking the page.
+  const activeBuilding =
+    buildings.find(b => b.id === searchParams.get('building')) || buildings[0]
+
+  // Reflect the selected tab in the URL so it can be copied and shared. Use
+  // replace (not push) so tab clicks don't stack history entries and trap the
+  // back button, and carry the current hash through so in-page anchors survive.
+  const selectBuilding = (id: string) => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('building', id)
+    navigate(
+      { pathname: location.pathname, search: `?${nextParams.toString()}`, hash: location.hash },
+      { replace: true }
+    )
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -38,9 +56,9 @@ export function ArchivesPage() {
           {buildings.map(building => (
             <button
               key={building.id}
-              onClick={() => setActiveTab(building.id)}
+              onClick={() => selectBuilding(building.id)}
               className={`px-5 py-3 font-medium text-base border-b-2 transition-all whitespace-nowrap ${
-                activeTab === building.id
+                activeBuilding.id === building.id
                   ? 'border-primary-600 text-primary-700 shadow-[0_0_8px_rgba(30,64,110,0.3)]'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
