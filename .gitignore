@@ -26,3 +26,13 @@ dist-ssr
 # Environment variables
 .env.local
 .env*.local
+
+# Per-machine Claude Code tooling config
+.claude/settings.local.json
+
+# Local utility with a hardcoded credential that writes directly to
+# production; ignored until refactored to read config from env vars
+scripts/bulk-upload-building-photos.ts
+
+# Generated build artifact
+scripts/stake-history-guide.pdf
