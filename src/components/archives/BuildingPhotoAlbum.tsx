@@ -13,6 +13,8 @@ interface BuildingPhoto {
   caption?: string
   approximate_date?: string
   event_context?: string
+  focal_x?: number | null
+  focal_y?: number | null
   submitter_name?: string
   submitted_at?: string
   taggedPeople: Array<{ id: string; display_name?: string; full_name: string }>
@@ -48,7 +50,7 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
 
       const { data, error: fetchError } = await supabase
         .from('photos')
-        .select('id, photo_url, caption, approximate_date, event_context, submitter_name, submitted_at, additional_people')
+        .select('id, photo_url, caption, approximate_date, event_context, focal_x, focal_y, submitter_name, submitted_at, additional_people')
         .eq('building_id', buildingId)
         .eq('status', 'approved')
         .order('submitted_at', { ascending: false })
@@ -156,6 +158,7 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
                   src={photo.photo_url}
                   alt={photo.caption || buildingName}
                   className="w-full h-full object-cover"
+                  style={{ objectPosition: `${photo.focal_x ?? 50}% ${photo.focal_y ?? 33}%` }}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement
                     target.style.display = 'none'

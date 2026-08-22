@@ -115,6 +115,8 @@ export interface Photo {
   submitter_phone?: string
   approximate_date?: string
   event_context?: string
+  focal_x?: number | null
+  focal_y?: number | null
   status: 'pending' | 'approved' | 'rejected'
   submitted_at: string
   reviewed_at?: string

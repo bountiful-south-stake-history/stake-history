@@ -28,6 +28,8 @@ export function usePersonPhotos(personId: string) {
               submitter_phone,
               approximate_date,
               event_context,
+              focal_x,
+              focal_y,
               additional_people,
               status,
               submitted_at,

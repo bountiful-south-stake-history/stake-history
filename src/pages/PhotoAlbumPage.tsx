@@ -21,6 +21,8 @@ interface Photo {
   caption: string
   approximate_date?: string
   event_context?: string
+  focal_x?: number | null
+  focal_y?: number | null
   submitter_name?: string
   submitted_at?: string
   taggedPeople: TaggedPerson[]
@@ -68,6 +70,8 @@ export function PhotoAlbumPage() {
             submitter_name,
             approximate_date,
             event_context,
+            focal_x,
+            focal_y,
             additional_people,
             submitted_at
           `)
@@ -310,6 +314,7 @@ export function PhotoAlbumPage() {
                   src={photo.photo_url}
                   alt={photo.caption || 'Photo'}
                   className="w-full h-full object-cover"
+                  style={{ objectPosition: `${photo.focal_x ?? 50}% ${photo.focal_y ?? 33}%` }}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement
                     target.style.display = 'none'
