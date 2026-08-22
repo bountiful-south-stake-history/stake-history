@@ -326,6 +326,7 @@ export function PersonMemoriesPage() {
                   src={photo.photo_url || (photo as any).file_url}
                   alt={photo.caption || 'Photo'}
                   className="w-full h-64 object-cover"
+                  style={{ objectPosition: `${photo.focal_x ?? 50}% ${photo.focal_y ?? 33}%` }}
                 />
                 <div className="p-3">
                   {photo.caption && (
