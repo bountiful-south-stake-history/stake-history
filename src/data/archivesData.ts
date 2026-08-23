@@ -19,6 +19,7 @@ export interface Building {
   dedicatedDate: string
   dedicatedBy?: string
   dedicatedByImage?: string
+  dedicatedByRole?: string
   description?: string
   imageUrl: string
   documents: BuildingDocument[]
@@ -139,6 +140,7 @@ export const buildings: Building[] = [
     dedicatedDate: 'March 2, 1952',
     dedicatedBy: 'Bishop LeGrand Richards',
     dedicatedByImage: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/legrand-richards.jpg',
+    dedicatedByRole: 'Presiding Bishop, later called as an apostle',
     description: 'Built and funded by Bountiful 4th Ward members. The east wing and cultural hall were later added to facilitate additional classrooms and bishop offices.',
     imageUrl: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/middle-building-exterior.jpg',
     documents: [

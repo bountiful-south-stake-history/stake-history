@@ -81,22 +81,24 @@ export function ArchivesPage() {
                 Dedicated {activeBuilding.dedicatedDate}
                 {activeBuilding.dedicatedBy && ` by ${activeBuilding.dedicatedBy}`}
               </p>
-              {activeBuilding.id === '102-e-1400-s' && (
+              {activeBuilding.dedicatedByImage && activeBuilding.dedicatedBy && (
                 <div className="flex items-center gap-3 mt-4">
                   <img
-                    src="https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/legrand-richards.jpg"
-                    alt="LeGrand Richards"
+                    src={activeBuilding.dedicatedByImage}
+                    alt={activeBuilding.dedicatedBy}
                     className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() =>
                       setLightboxImage({
-                        url: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/legrand-richards.jpg',
-                        alt: 'LeGrand Richards',
+                        url: activeBuilding.dedicatedByImage!,
+                        alt: activeBuilding.dedicatedBy!,
                       })
                     }
                   />
                   <div>
-                    <p className="font-medium text-gray-900">Bishop LeGrand Richards</p>
-                    <p className="text-sm text-gray-500">Presiding Bishop, later called as an apostle</p>
+                    <p className="font-medium text-gray-900">{activeBuilding.dedicatedBy}</p>
+                    {activeBuilding.dedicatedByRole && (
+                      <p className="text-sm text-gray-500">{activeBuilding.dedicatedByRole}</p>
+                    )}
                   </div>
                 </div>
               )}
