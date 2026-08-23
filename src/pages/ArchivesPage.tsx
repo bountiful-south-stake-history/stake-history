@@ -7,6 +7,8 @@ import { AudioPlayer } from '../components/archives/AudioPlayer'
 import { ImageLightbox } from '../components/archives/ImageLightbox'
 import { BuildingPhotoAlbum } from '../components/archives/BuildingPhotoAlbum'
 import { BuildingMemories } from '../components/archives/BuildingMemories'
+import { BuildingTimeline } from '../components/archives/BuildingTimeline'
+import { CollapsibleSection } from '../components/ui/CollapsibleSection'
 import { AuthModal } from '../components/auth/AuthModal'
 
 const tabLabels: Record<string, string> = {
@@ -189,6 +191,22 @@ export function ArchivesPage() {
                 ))}
               </div>
             </div>
+          </section>
+        )}
+
+        {/* Building History Timeline */}
+        {activeBuilding.timeline && activeBuilding.timeline.length > 0 && (
+          <section className="mb-8 border-t border-gray-200 pt-6">
+            <CollapsibleSection
+              title="Building History"
+              subtitle={`Groundbreaking to sale, ${activeBuilding.timeline[0].year}–${activeBuilding.timeline[activeBuilding.timeline.length - 1].year}`}
+              defaultOpen={true}
+            >
+              <BuildingTimeline
+                events={activeBuilding.timeline}
+                onImageClick={(url, alt) => setLightboxImage({ url, alt })}
+              />
+            </CollapsibleSection>
           </section>
         )}
 
