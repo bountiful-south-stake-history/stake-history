@@ -12,6 +12,16 @@ export interface BuildingDocument {
   url: string
 }
 
+export interface BuildingEvent {
+  year: string
+  date?: string
+  label: string
+  detail?: string
+  authority?: string
+  authorityImage?: string
+  authorityRole?: string
+}
+
 export interface Building {
   id: string
   name: string
@@ -24,6 +34,7 @@ export interface Building {
   imageUrl: string
   documents: BuildingDocument[]
   fullAudioUrl?: string
+  timeline?: BuildingEvent[]
 }
 
 export const stakeInfo = {
@@ -141,13 +152,35 @@ export const buildings: Building[] = [
     dedicatedBy: 'Bishop LeGrand Richards',
     dedicatedByImage: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/legrand-richards.jpg',
     dedicatedByRole: 'Presiding Bishop, later called as an apostle',
-    description: 'Built and funded by Bountiful 4th Ward members. The east wing and cultural hall were later added to facilitate additional classrooms and bishop offices.',
+    description: "Built and funded by Bountiful 4th Ward members. The 1963–64 enlargement added the east wing, a full stage, a larger kitchen, additional classrooms, and bishop's offices.",
     imageUrl: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/middle-building-exterior.jpg',
     documents: [
       {
-        title: 'Dedicatory Remarks & Prayer',
+        title: 'Dedicatory Remarks & Prayer (1952)',
         url: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/documents/middle-building-dedication-1952.pdf',
       }
+    ],
+    timeline: [
+      {
+        year: '1952',
+        date: 'March 2, 1952',
+        label: 'Dedicated',
+        detail: "Groundbreaking was held June 7, 1949, with Elder Harold B. Lee of the Quorum of the Twelve Apostles — later President of the Church — representing the General Authorities. The original building held the chapel, west wing, and recreation hall with a small stage and kitchen nook, in 9,900 square feet built at a cost of $148,000. The steeple originally stood over the west entrance. Members of the Bountiful 4th Ward raised the funds and donated the labor; Justin Tolman kept a written record of every donated hour by organization. The dedication service music was carried entirely by the ward's youth choir.",
+      },
+      {
+        year: '1963–64',
+        date: 'January 22, 1967',
+        label: 'Enlarged and rededicated',
+        detail: "Elder Spencer W. Kimball of the Quorum of the Twelve Apostles — later President of the Church — officiated at the groundbreaking in August 1963. Construction ran from September 1, 1963 to October 1, 1964, adding 10,692 square feet at a cost of $242,893 — larger than the original building. The addition brought the east wing, a full raised stage, a large kitchen, additional classrooms, and bishop's offices, and the steeple was moved from the west entrance to the top of the chapel. Members of the three wards donated labor valued at $27,100. By then the building served the Bountiful 4th, 7th, and 20th Wards — 1,834 members in 1963.",
+        authority: 'President N. Eldon Tanner',
+        authorityImage: '',
+        authorityRole: 'Second Counselor in the First Presidency',
+      },
+      {
+        year: '2026',
+        label: 'Announced for sale',
+        detail: 'Farewell open house held August 15, 2026.',
+      },
     ],
   },
   {
