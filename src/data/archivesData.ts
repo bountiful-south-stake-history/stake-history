@@ -119,7 +119,7 @@ export const dedicationSpeakers: DedicationSpeaker[] = [
 
 export const buildings: Building[] = [
   {
-    id: 'stake-center',
+    id: '1250-s-main',
     name: 'Stake Center',
     address: '1250 S Main Street, Bountiful UT',
     dedicatedDate: 'October 17, 1971',
@@ -133,8 +133,8 @@ export const buildings: Building[] = [
     fullAudioUrl: '', // Add when audio uploaded
   },
   {
-    id: 'middle-building',
-    name: 'Middle Building',
+    id: '102-e-1400-s',
+    name: 'Middle',
     address: '102 E 1400 S, Bountiful UT',
     dedicatedDate: 'March 2, 1952',
     dedicatedBy: 'Bishop LeGrand Richards',
@@ -149,8 +149,8 @@ export const buildings: Building[] = [
     ],
   },
   {
-    id: 'south-building',
-    name: '1500 S 600 E',
+    id: '1500-s-600-e',
+    name: 'East',
     address: '1500 S 600 E, Bountiful UT',
     dedicatedDate: '',
     imageUrl: '',

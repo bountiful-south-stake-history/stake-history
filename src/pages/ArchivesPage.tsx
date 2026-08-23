@@ -10,9 +10,9 @@ import { BuildingMemories } from '../components/archives/BuildingMemories'
 import { AuthModal } from '../components/auth/AuthModal'
 
 const tabLabels: Record<string, string> = {
-  'stake-center': '1250 S Main',
-  'middle-building': '102 E 1400 S',
-  'south-building': '1500 S 600 E',
+  '1250-s-main': '1250 S Main',
+  '102-e-1400-s': '102 E 1400 S',
+  '1500-s-600-e': '1500 S 600 E',
 }
 
 export function ArchivesPage() {
@@ -81,7 +81,7 @@ export function ArchivesPage() {
                 Dedicated {activeBuilding.dedicatedDate}
                 {activeBuilding.dedicatedBy && ` by ${activeBuilding.dedicatedBy}`}
               </p>
-              {activeBuilding.id === 'middle-building' && (
+              {activeBuilding.id === '102-e-1400-s' && (
                 <div className="flex items-center gap-3 mt-4">
                   <img
                     src="https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/legrand-richards.jpg"
@@ -154,7 +154,7 @@ export function ArchivesPage() {
         </section>
 
         {/* Dedication Audio (Stake Center only) */}
-        {activeBuilding.id === 'stake-center' && (
+        {activeBuilding.id === '1250-s-main' && (
           <section className="mb-8">
             <div className="border-t border-gray-200 pt-4 mb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
