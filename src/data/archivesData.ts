@@ -173,7 +173,7 @@ export const buildings: Building[] = [
         label: 'Enlarged and rededicated',
         detail: "Elder Spencer W. Kimball of the Quorum of the Twelve Apostles — later President of the Church — officiated at the groundbreaking in August 1963. Construction ran from September 1, 1963 to October 1, 1964, adding 10,692 square feet at a cost of $242,893 — larger than the original building. The addition brought the east wing, a full raised stage, a large kitchen, additional classrooms, and bishop's offices, and the steeple was moved from the west entrance to the top of the chapel. Members of the three wards donated labor valued at $27,100. By then the building served the Bountiful 4th, 7th, and 20th Wards — 1,834 members in 1963.",
         authority: 'President N. Eldon Tanner',
-        authorityImage: '',
+        authorityImage: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/n-eldon-tanner.jpg',
         authorityRole: 'Second Counselor in the First Presidency',
       },
       {
