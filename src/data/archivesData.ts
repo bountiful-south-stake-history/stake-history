@@ -20,6 +20,7 @@ export interface BuildingEvent {
   authority?: string
   authorityImage?: string
   authorityRole?: string
+  documents?: BuildingDocument[]
 }
 
 export interface Building {
@@ -151,12 +152,7 @@ export const buildings: Building[] = [
     dedicatedDate: 'March 2, 1952',
     description: 'The Bountiful 4th Ward built this chapel in 1952 and enlarged it a decade later to serve three wards. Two future Presidents of the Church broke ground on it, fourteen years apart. After seventy-four years, it was announced for sale in 2026.',
     imageUrl: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/middle-building-exterior.jpg',
-    documents: [
-      {
-        title: 'Dedicatory Remarks & Prayer (1952)',
-        url: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/documents/middle-building-dedication-1952.pdf',
-      }
-    ],
+    documents: [],
     timeline: [
       {
         year: '1949',
@@ -175,6 +171,12 @@ export const buildings: Building[] = [
         authority: 'Bishop LeGrand Richards',
         authorityImage: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/legrand-richards.jpg',
         authorityRole: 'Presiding Bishop, later called as an apostle',
+        documents: [
+          {
+            title: 'Dedicatory Remarks & Prayer (1952)',
+            url: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/documents/middle-building-dedication-1952.pdf',
+          },
+        ],
       },
       {
         year: '1963',
