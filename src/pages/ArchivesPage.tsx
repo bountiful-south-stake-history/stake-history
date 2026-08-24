@@ -202,7 +202,7 @@ export function ArchivesPage() {
             <CollapsibleSection
               title="Building History"
               subtitle={`Groundbreaking to sale, ${activeBuilding.timeline[0].year}–${activeBuilding.timeline[activeBuilding.timeline.length - 1].year}`}
-              defaultOpen={true}
+              defaultOpen={false}
             >
               <BuildingTimeline
                 events={activeBuilding.timeline}
