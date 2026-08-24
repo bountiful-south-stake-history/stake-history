@@ -1,5 +1,26 @@
 -- =====================================================================
--- migration_public_profile_names.sql   (DRAFT — FOR HUMAN REVIEW, UNAPPLIED)
+-- migration_public_profile_names.sql   (APPLIED TO PRODUCTION 2026-08-24)
+-- =====================================================================
+-- STATUS: APPLIED TO PRODUCTION on 2026-08-24 by the project owner via the
+--   Supabase SQL Editor. Verified after apply:
+--     * The view was created with EXACTLY two columns, id and display_name
+--       (confirmed via information_schema.columns).
+--     * authenticated retains SELECT on the view.
+--     * anon has NO privilege on the view (confirmed absent) — see the REVOKE
+--       note immediately below.
+--   IMPORTANT — EXTRA REVOKE REQUIRED, NOT IN THE STATEMENT LIST BELOW:
+--     On creation, Supabase default privileges granted `anon` the FULL privilege
+--     set on public.profile_display_names. Statement 2 only GRANTs to
+--     authenticated, so it does NOT remove that default anon grant. The anon
+--     grant was removed by running, in addition:
+--         REVOKE ALL ON public.profile_display_names FROM anon;
+--     Anyone REPLAYING this migration MUST run that REVOKE as well, or the view
+--     will be anon-readable (a full roster of ids + display names). This matches
+--     the contingency already flagged in Statement 2's comment and verification
+--     step 3.
+--   Kept in-repo as the version-controlled record of what was applied; the SQL
+--   below is unchanged from what ran (the extra REVOKE is documented, not yet
+--   folded into the statement list — see above).
 -- =====================================================================
 -- File C of the email-exposure close (Files A, B, C, D). Independently
 -- appliable and SAFE TO APPLY FIRST — it only ADDS a new read surface and

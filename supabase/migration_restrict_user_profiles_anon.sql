@@ -1,7 +1,22 @@
 -- =====================================================================
--- migration_restrict_user_profiles_anon.sql   (DRAFT — FOR HUMAN REVIEW, UNAPPLIED)
+-- migration_restrict_user_profiles_anon.sql   (APPLIED TO PRODUCTION 2026-08-24)
 -- =====================================================================
--- !!! ORDERING CONSTRAINT — READ BEFORE APPLYING !!!
+-- STATUS: APPLIED TO PRODUCTION on 2026-08-24 by the project owner via the
+--   Supabase SQL Editor, AFTER the usePhotoLikes repoint deploy (merge commit
+--   99d2c21) was live and verified. Verified after apply:
+--     * pg_policies confirmed both "Anyone can read profiles" and
+--       "Public can view profiles" are GONE, with "Users can view own profile"
+--       (authenticated, auth.uid() = id) retained.
+--     * anon's grants on public.user_profiles were revoked (none remain).
+--     * Liker display names still render for authenticated users in the running
+--       app after the change (the profile_display_names path works).
+--   This closes the last of the three grounding-phase security findings (anon
+--   reading emails directly from the user_profiles base table).
+--   Kept in-repo as the version-controlled record of what was applied; the SQL
+--   below is unchanged from what ran. The ordering constraint below is retained
+--   for historical context / replay guidance.
+-- =====================================================================
+-- !!! ORDERING CONSTRAINT — READ BEFORE APPLYING (historical; already satisfied) !!!
 -- DO NOT APPLY THIS FILE until BOTH of these are true:
 --   (1) File C (migration_public_profile_names.sql) has been applied, AND
 --   (2) the application code change that repoints usePhotoLikes.ts (all three
