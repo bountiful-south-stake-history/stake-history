@@ -8,6 +8,7 @@ import { ImageLightbox } from '../components/archives/ImageLightbox'
 import { BuildingPhotoAlbum } from '../components/archives/BuildingPhotoAlbum'
 import { BuildingMemories } from '../components/archives/BuildingMemories'
 import { BuildingTimeline } from '../components/archives/BuildingTimeline'
+import { PaintingFeature } from '../components/archives/PaintingFeature'
 import { CollapsibleSection } from '../components/ui/CollapsibleSection'
 import { AuthModal } from '../components/auth/AuthModal'
 
@@ -205,6 +206,23 @@ export function ArchivesPage() {
               <BuildingTimeline
                 events={activeBuilding.timeline}
                 onImageClick={(url, alt) => setLightboxImage({ url, alt })}
+              />
+            </CollapsibleSection>
+          </section>
+        )}
+
+        {/* A Fisher of Men — the painting (102 E 1400 S only) */}
+        {activeBuilding.id === '102-e-1400-s' && (
+          <section className="mb-8 border-t border-gray-200 pt-6">
+            <CollapsibleSection
+              title="A Fisher of Men"
+              subtitle="The painting that hung behind the pulpit"
+              defaultOpen={false}
+            >
+              <PaintingFeature
+                onImageClick={(url, alt) => setLightboxImage({ url, alt })}
+                isSignedIn={!authLoading && !!user}
+                onSignIn={() => setShowAuthModal(true)}
               />
             </CollapsibleSection>
           </section>
