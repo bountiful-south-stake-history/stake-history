@@ -34,19 +34,18 @@ export function usePhotoLikes() {
       // Get unique user IDs from the likes
       const userIds = [...new Set((likesData || []).map((like) => like.user_id))]
 
-      // Second query: Fetch user profiles for display names
-      let profilesMap = new Map<string, { display_name?: string; email?: string }>()
+      // Second query: Fetch public display names (no email; profile_display_names view)
+      let profilesMap = new Map<string, { display_name?: string }>()
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
-          .from('user_profiles')
-          .select('id, display_name, email')
+          .from('profile_display_names')
+          .select('id, display_name')
           .in('id', userIds)
 
         if (profilesData) {
           profilesData.forEach((profile) => {
             profilesMap.set(profile.id, {
               display_name: profile.display_name || undefined,
-              email: profile.email || undefined,
             })
           })
         }
@@ -77,11 +76,8 @@ export function usePhotoLikes() {
             if (profile?.display_name) {
               return profile.display_name
             }
-            if (profile?.email) {
-              // Extract name from email (before @)
-              return profile.email.split('@')[0]
-            }
-            return null
+            // No display name available: show a neutral placeholder, never an email.
+            return 'A member'
           })
           .filter(Boolean) as string[]
 
@@ -156,19 +152,18 @@ export function usePhotoLikes() {
 
       if (likesData) {
         const userIds = [...new Set(likesData.map((like) => like.user_id))]
-        let profilesMap = new Map<string, { display_name?: string; email?: string }>()
-        
+        let profilesMap = new Map<string, { display_name?: string }>()
+
         if (userIds.length > 0) {
           const { data: profilesData } = await supabase
-            .from('user_profiles')
-            .select('id, display_name, email')
+            .from('profile_display_names')
+            .select('id, display_name')
             .in('id', userIds)
 
           if (profilesData) {
             profilesData.forEach((profile) => {
               profilesMap.set(profile.id, {
                 display_name: profile.display_name || undefined,
-                email: profile.email || undefined,
               })
             })
           }
@@ -180,10 +175,8 @@ export function usePhotoLikes() {
             if (profile?.display_name) {
               return profile.display_name
             }
-            if (profile?.email) {
-              return profile.email.split('@')[0]
-            }
-            return null
+            // No display name available: show a neutral placeholder, never an email.
+            return 'A member'
           })
           .filter(Boolean) as string[]
 
@@ -263,19 +256,18 @@ export function usePhotoLikes() {
 
       if (likesData) {
         const userIds = [...new Set(likesData.map((like) => like.user_id))]
-        let profilesMap = new Map<string, { display_name?: string; email?: string }>()
-        
+        let profilesMap = new Map<string, { display_name?: string }>()
+
         if (userIds.length > 0) {
           const { data: profilesData } = await supabase
-            .from('user_profiles')
-            .select('id, display_name, email')
+            .from('profile_display_names')
+            .select('id, display_name')
             .in('id', userIds)
 
           if (profilesData) {
             profilesData.forEach((profile) => {
               profilesMap.set(profile.id, {
                 display_name: profile.display_name || undefined,
-                email: profile.email || undefined,
               })
             })
           }
@@ -287,10 +279,8 @@ export function usePhotoLikes() {
             if (profile?.display_name) {
               return profile.display_name
             }
-            if (profile?.email) {
-              return profile.email.split('@')[0]
-            }
-            return null
+            // No display name available: show a neutral placeholder, never an email.
+            return 'A member'
           })
           .filter(Boolean) as string[]
 

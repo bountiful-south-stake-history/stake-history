@@ -1,0 +1,146 @@
+-- =====================================================================
+-- migration_public_profile_names.sql   (DRAFT — FOR HUMAN REVIEW, UNAPPLIED)
+-- =====================================================================
+-- File C of the email-exposure close (Files A, B, C, D). Independently
+-- appliable and SAFE TO APPLY FIRST — it only ADDS a new read surface and
+-- changes nothing existing.
+--
+-- WHY THIS EXISTS — two distinct email exposures on public.user_profiles, to
+-- two different audiences (corrected per the photo_likes RLS finding):
+--   1. ANONYMOUS exposure = a DIRECT base-table read. anon holds table SELECT
+--      plus two USING(true) SELECT policies, so any anon-key holder can call
+--      GET /rest/v1/user_profiles?select=email and receive all 42 addresses.
+--      This is NOT reached through usePhotoLikes: photo_likes RLS permits SELECT
+--      to `authenticated` only, so an anonymous visitor's usePhotoLikes call
+--      returns no likes, userIds is empty, and the profiles lookup never runs.
+--      File D closes this direct-read exposure.
+--   2. AUTHENTICATED-viewer exposure = usePhotoLikes itself. For a signed-in
+--      viewer, photo_likes is readable, so usePhotoLikes fetches liker profiles
+--      and currently selects `email` — i.e. any authenticated viewer can read
+--      other members' email addresses. The code repoint (to this view) removes
+--      that, and is ALSO required so those authenticated cross-user lookups keep
+--      working after File D narrows base-table SELECT to own-row only.
+-- This view is the email-free display-name path that both fixes (2) and unblocks
+-- File D for (1).
+--
+-- SEQUENCING: apply this file -> deploy the code change that repoints
+-- usePhotoLikes at this view (authenticated call path) -> verify -> only then
+-- apply File D (migration_restrict_user_profiles_anon.sql), which revokes anon
+-- from the base table and drops the two USING(true) policies. This file on its
+-- own has no dependency and no risk.
+--
+-- Written for the Supabase web SQL Editor: atomic statements only, no
+-- BEGIN/COMMIT.
+--
+-- ---------------------------------------------------------------------
+-- security_invoker DECISION: NOT set (the view runs SECURITY DEFINER, i.e. as
+-- its owner `postgres`). Justification:
+--   * The task hint notes this view "reads no auth schema data," which would
+--     normally argue for security_invoker=true (the usual lint preference).
+--     But the PURPOSE of this view is to keep the authenticated cross-user
+--     display-name lookup working AFTER File D narrows base-table SELECT to
+--     own-row only (File D drops the two USING(true) policies, so an
+--     authenticated caller will be able to read only their OWN user_profiles
+--     row). If this view were security_invoker=true, reading it would execute as
+--     the caller and be subject to that same narrowed RLS — so a signed-in
+--     viewer could no longer see OTHER users' names, defeating the purpose.
+--   * Running as owner (the default) makes this a self-contained, email-free
+--     display-name path independent of base-table RLS, so File D can tighten the
+--     base table without breaking the "liked by <name>" feature for
+--     authenticated viewers.
+--   * This is safe because the view exposes ONLY non-sensitive columns that are
+--     already rendered publicly on the site: `id` (a UUID also present in
+--     photo_likes data) and `display_name`. It does NOT expose email, role, or
+--     the view_blocked* fields.
+--   * Trade-off acknowledged: a SECURITY DEFINER view trips the Supabase
+--     "security definer view" advisor. That warning is accepted here precisely
+--     because the two exposed columns are non-sensitive and the definer
+--     semantics are the mechanism that lets us close the email leak. (Contrast
+--     admin_users_view in File A, which is definer for a different reason —
+--     reading auth.users — and is additionally gated to admins.)
+-- =====================================================================
+
+
+-- ---------------------------------------------------------------------
+-- STATEMENT 1 — Create the minimal view: id + display_name only.
+-- ---------------------------------------------------------------------
+-- No email, no role, no view_blocked. Runs as owner (default; security_invoker
+-- intentionally NOT set — see header) so it bypasses base-table RLS and returns
+-- the two non-sensitive columns for all profiles to any grantee of the view.
+--
+-- SCOPE DECISION (recorded): this view is intentionally UNSCOPED (no WHERE).
+-- Scoping it to only users with public "like" activity (e.g. WHERE id IN
+-- (SELECT user_id FROM public.photo_likes)) was considered and REJECTED: it
+-- would couple the view to the photo-likes feature and would silently return no
+-- row for any future consumer that needs a display name for a non-liker (e.g. a
+-- memory author, watchlist entry, or comment). An unscoped view serves any such
+-- consumer. Enumeration of the roster is instead constrained by the grant in
+-- Statement 2 (authenticated only), not by a WHERE clause.
+--
+-- REVERSIBLE: yes.  DROP VIEW public.profile_display_names;
+
+CREATE OR REPLACE VIEW public.profile_display_names AS
+  SELECT id, display_name
+  FROM public.user_profiles;
+
+
+-- ---------------------------------------------------------------------
+-- STATEMENT 2 — Grant read access to AUTHENTICATED ONLY (anon deliberately excluded).
+-- ---------------------------------------------------------------------
+-- Only authenticated callers consume this view: usePhotoLikes reaches the
+-- display-name lookup exclusively for signed-in users, because photo_likes RLS
+-- permits SELECT to `authenticated` only. An anonymous visitor's usePhotoLikes
+-- call returns no likes, so userIds is empty and this view is never queried.
+-- anon therefore has NO app consumer for this view.
+--
+-- anon is EXCLUDED deliberately: because the view is unscoped and SECURITY
+-- DEFINER, granting anon SELECT would let any anon-key holder call
+-- GET /rest/v1/profile_display_names with no filter and retrieve a full roster
+-- of all account ids and display names — an enumeration surface that does not
+-- exist today and that the app never needs. Granting authenticated only keeps
+-- the roster reachable solely by signed-in users (who already pass through auth)
+-- and closes the anon enumeration path.
+--
+-- Note: Supabase default privileges may auto-grant SELECT to anon on new public
+-- objects. This statement grants authenticated explicitly; if a default-privilege
+-- anon grant exists, revoke it too (see verification step 3) — the intent is
+-- "authenticated: yes, anon: no".
+--
+-- REVERSIBLE: yes.
+--   REVOKE SELECT ON public.profile_display_names FROM authenticated;
+
+GRANT SELECT ON public.profile_display_names TO authenticated;
+
+
+-- =====================================================================
+-- Verification after apply  (READ-ONLY — safe to run in the SQL Editor)
+-- =====================================================================
+-- 1. Confirm the view exists, exposes exactly id + display_name, and carries NO
+--    email/role columns:
+--       SELECT column_name FROM information_schema.columns
+--        WHERE table_schema='public' AND table_name='profile_display_names'
+--        ORDER BY ordinal_position;
+--    Expect exactly: id, display_name.
+--
+-- 2. Confirm the view is NOT security_invoker (reloptions null or lacking
+--    security_invoker => runs as owner, which is what we want here):
+--       SELECT relname, reloptions FROM pg_class
+--        WHERE oid='public.profile_display_names'::regclass;
+--
+-- 3. Confirm ONLY authenticated holds SELECT on the view — expect an
+--    'authenticated' SELECT row and NO 'anon' row (if an anon row appears from
+--    default privileges, run: REVOKE SELECT ON public.profile_display_names FROM anon;):
+--       SELECT pg_get_userbyid(a.grantee) AS grantee, a.privilege_type
+--         FROM pg_class c
+--         JOIN pg_namespace n ON n.oid=c.relnamespace
+--         LEFT JOIN LATERAL aclexplode(c.relacl) a ON true
+--        WHERE n.nspname='public' AND c.relname='profile_display_names'
+--        ORDER BY grantee, privilege_type;
+--    Expect: a SELECT row for 'authenticated'; NO row for 'anon'.
+--
+-- 4. Optional functional check (test project or throwaway tokens, NOT a prod
+--    write): with an AUTHENTICATED token,
+--    GET /rest/v1/profile_display_names?select=id,display_name returns rows with
+--    names and no email field. With an ANON token, the same request should be
+--    rejected / return no access.
+-- =====================================================================
