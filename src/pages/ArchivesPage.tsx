@@ -9,6 +9,7 @@ import { BuildingPhotoAlbum } from '../components/archives/BuildingPhotoAlbum'
 import { BuildingMemories } from '../components/archives/BuildingMemories'
 import { BuildingTimeline } from '../components/archives/BuildingTimeline'
 import { PaintingFeature } from '../components/archives/PaintingFeature'
+import { FarewellSection } from '../components/archives/FarewellSection'
 import { CollapsibleSection } from '../components/ui/CollapsibleSection'
 import { AuthModal } from '../components/auth/AuthModal'
 
@@ -220,6 +221,23 @@ export function ArchivesPage() {
               defaultOpen={false}
             >
               <PaintingFeature
+                onImageClick={(url, alt) => setLightboxImage({ url, alt })}
+                isSignedIn={!authLoading && !!user}
+                onSignIn={() => setShowAuthModal(true)}
+              />
+            </CollapsibleSection>
+          </section>
+        )}
+
+        {/* Farewell Open House (102 E 1400 S only) */}
+        {activeBuilding.id === '102-e-1400-s' && (
+          <section className="mb-8 border-t border-gray-200 pt-6">
+            <CollapsibleSection
+              title="Farewell Open House"
+              subtitle="August 15, 2026"
+              defaultOpen={false}
+            >
+              <FarewellSection
                 onImageClick={(url, alt) => setLightboxImage({ url, alt })}
                 isSignedIn={!authLoading && !!user}
                 onSignIn={() => setShowAuthModal(true)}
