@@ -86,3 +86,17 @@ This manual is a **required deliverable of this arc.** It must, at minimum, cove
 - A verification pass on that inventory — pasting literal code for the load-bearing claims and retrieving the live `admin_users_view` definition read-only — was **in progress** when this plan was authored. Verified findings supersede the inventory's summaries where they differ; amend this plan accordingly if that happens.
 - That verification pass is now **complete**; its literal-code evidence, grep results, the `admin_users_view` definition, and every verdict are recorded in [docs/admin-ux-verification.md](./admin-ux-verification.md).
 - This document records decisions only. It is not an implementation spec and prescribes no code changes.
+
+---
+
+## 7. Status — security findings and current state
+
+Security issues surfaced during grounding/verification, and where each stands as of **2026-08-24**:
+
+- **Anon read of all account emails via `admin_users_view`** — **CLOSED 2026-08-24.** The view exposed `auth.users.email` for all accounts to the `anon` role (definer view + anon SELECT). Fixed by [migration_secure_admin_users_view.sql](../supabase/migration_secure_admin_users_view.sql) (File A), applied to production by the project owner and verified.
+- **Privilege escalation — any authenticated user could set their own `role` to `admin`** — **CLOSED 2026-08-24.** RLS `UPDATE` policy with no `WITH CHECK` plus an unrestricted table-level UPDATE grant allowed self-promotion. Fixed by [migration_block_role_escalation.sql](../supabase/migration_block_role_escalation.sql) (File B), applied to production and verified (trigger enabled; admin edits still work; direct-session recovery preserved).
+- **Anon read of emails directly from the `user_profiles` base table** — **OPEN.** Independent of the view: `anon` holds table SELECT plus two `USING (true)` SELECT policies, so `GET /rest/v1/user_profiles?select=email` returns all addresses. Closing it requires **File C** ([migration_public_profile_names.sql](../supabase/migration_public_profile_names.sql)) + the **`usePhotoLikes` code repoint** + **File D** ([migration_restrict_user_profiles_anon.sql](../supabase/migration_restrict_user_profiles_anon.sql)), in that order — **File D must not be applied until the code repoint deploy has landed and is verified**, or signed-in viewers lose the "liked by" names. Files C and D remain **unapplied drafts**.
+
+Additional standing notes:
+- **Role changes still write no `audit_log` entry.** Promoting/demoting an admin leaves no recorded history; only current state is checkable.
+- **At time of writing, production had exactly one admin account, whose `user_profiles` row had never been modified since creation** (`created_at` = `updated_at`). Single admin = single point of failure for handoff (see the Tier 1 continuity concerns above).

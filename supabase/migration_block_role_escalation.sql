@@ -1,7 +1,15 @@
 -- =====================================================================
--- migration_block_role_escalation.sql   (DRAFT — FOR HUMAN REVIEW)
+-- migration_block_role_escalation.sql   (APPLIED TO PRODUCTION 2026-08-24)
 -- =====================================================================
--- DO NOT APPLY BLINDLY. Split from the earlier combined draft
+-- STATUS: APPLIED TO PRODUCTION on 2026-08-24 by the project owner via the
+--   Supabase SQL Editor. Verified after apply:
+--     * pg_trigger showed trg_user_profiles_enforce_privileged_columns with
+--       tgenabled = 'O' (enabled).
+--     * An admin display-name edit through the Users tab succeeded normally.
+--   Kept in-repo as the version-controlled record of what was applied; the SQL
+--   below is unchanged from what ran.
+-- =====================================================================
+-- Split from the earlier combined draft
 -- (migration_secure_user_profiles.sql). Independently appliable. Addresses ONE
 -- issue only:
 --

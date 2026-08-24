@@ -1,7 +1,15 @@
 -- =====================================================================
--- migration_secure_admin_users_view.sql   (DRAFT — FOR HUMAN REVIEW)
+-- migration_secure_admin_users_view.sql   (APPLIED TO PRODUCTION 2026-08-24)
 -- =====================================================================
--- DO NOT APPLY BLINDLY. Split from the earlier combined draft
+-- STATUS: APPLIED TO PRODUCTION on 2026-08-24 by the project owner via the
+--   Supabase SQL Editor. Verified after apply:
+--     * The Users tab continued to return all rows for an admin session.
+--     * The grants query showed NO anon rows on admin_users_view, with the
+--       authenticated SELECT grant retained.
+--   Kept in-repo as the version-controlled record of what was applied; the SQL
+--   below is unchanged from what ran.
+-- =====================================================================
+-- Split from the earlier combined draft
 -- (migration_secure_user_profiles.sql), which this file + its sibling
 -- migration_block_role_escalation.sql together supersede. This file is
 -- independently appliable and addresses ONE issue only:

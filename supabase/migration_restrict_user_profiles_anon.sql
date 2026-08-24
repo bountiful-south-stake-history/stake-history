@@ -32,6 +32,10 @@
 -- This file is File D of the email-exposure close (Files A, B, C, D). Written
 -- for the Supabase web SQL Editor: atomic statements only, no BEGIN/COMMIT.
 --
+-- NOTE: File B (migration_block_role_escalation.sql) is already APPLIED to
+-- production (2026-08-24) and does NOT gate this file. File D's only prerequisite
+-- is the File C view + the usePhotoLikes code repoint being deployed and verified.
+--
 -- ---------------------------------------------------------------------
 -- PRE-DRAFT READER RE-CHECK (required before proposing any revoke):
 -- Every remaining reader of public.user_profiles was re-scanned. AFTER the
