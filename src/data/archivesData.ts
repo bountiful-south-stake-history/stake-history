@@ -208,7 +208,7 @@ export const buildings: Building[] = [
     name: 'East',
     address: '1500 S 600 E, Bountiful UT',
     dedicatedDate: '',
-    imageUrl: '',
+    imageUrl: 'https://kywsocmgkrckwhnmhtfz.supabase.co/storage/v1/object/public/archives/images/1500-S-600-E-front-rndr-wide-sm.jpg',
     documents: [],
   },
 ]

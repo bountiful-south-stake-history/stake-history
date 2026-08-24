@@ -119,7 +119,7 @@ export function ArchivesPage() {
               <img
                 src={activeBuilding.imageUrl}
                 alt={activeBuilding.name}
-                className="w-full h-64 object-cover rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+                className="w-full h-80 object-cover rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() =>
                   setLightboxImage({
                     url: activeBuilding.imageUrl,
