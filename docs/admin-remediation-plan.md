@@ -84,4 +84,5 @@ This manual is a **required deliverable of this arc.** It must, at minimum, cove
 
 - All factual claims trace to [docs/admin-ux-inventory.md](./admin-ux-inventory.md) (sections cited inline above).
 - A verification pass on that inventory — pasting literal code for the load-bearing claims and retrieving the live `admin_users_view` definition read-only — was **in progress** when this plan was authored. Verified findings supersede the inventory's summaries where they differ; amend this plan accordingly if that happens.
+- That verification pass is now **complete**; its literal-code evidence, grep results, the `admin_users_view` definition, and every verdict are recorded in [docs/admin-ux-verification.md](./admin-ux-verification.md).
 - This document records decisions only. It is not an implementation spec and prescribes no code changes.
