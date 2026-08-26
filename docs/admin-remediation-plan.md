@@ -34,7 +34,7 @@ Tiers are worked in order. **Rule: no lower tier ships before the tier above it 
 
 ### Tier 1 — Continuity: the site must survive an unplanned handoff
 The failure this tier addresses: the sole admin becomes unreachable (lost password, left the calling, moved) and no one can get back in or stand up a replacement without a developer.
-- **Absent password-reset path.** There is no self-service password reset or account recovery anywhere in the codebase — a locked-out admin has no in-app route back in. (Inventory §13.)
+- **Absent password-reset path.** ~~There is no self-service password reset or account recovery anywhere in the codebase — a locked-out admin has no in-app route back in.~~ **DONE 2026-08-25** — a self-service `/reset-password` flow was built, deployed, and verified end to end on production. Full record in §10. (Inventory §13.)
 - **Capture `admin_users_view` into a repo migration.** The Users tab and the dashboard user count depend on this view, but it exists **only in the live database** — no migration or schema file defines it. If the database is ever rebuilt from the repo, the Users tab breaks and admin management is lost. Its definition must be captured into a committed migration so the admin surface is reproducible from source. (Inventory §6, §8.)
 
 ### Tier 2 — Protection of the record: destructive actions gated proportionally to consequence
@@ -142,3 +142,66 @@ Two independent problems were separated during investigation. **Only the first i
 ### 9.3 Loose ends from the handoff — resolved
 - Stake Admin `display_name` reads **"Stake Admin"** (correct; the test "Stake AdminZ" value is not present).
 - Dev server **is** still listening on `localhost:5174` (PID 14372) — stale, safe to stop; not killed unilaterally.
+
+---
+
+## 10. Session update — 2026-08-25 (Tier 1: password reset shipped and verified)
+
+### 10.1 Password-reset flow — COMPLETE and verified in production
+
+The first Tier 1 deliverable — the absent password-reset path (§3, Inventory §13) — is **done**. A self-service recovery flow was built, deployed, and verified end to end on the live site.
+
+**What was built:**
+- A dedicated **`/reset-password`** route ([src/pages/ResetPasswordPage.tsx](../src/pages/ResetPasswordPage.tsx)) rendering inside the normal `Layout`, reachable by signed-out users. It handles four states with plain-language, non-technical copy:
+  - **request** — no recovery session: an email field that calls `resetPasswordForEmail`; the confirmation message does not reveal whether the address has an account.
+  - **set** — a recovery session is present: new-password and confirm fields (minimum 6 characters, matching the app's client-side signup validation), calling `updateUser`.
+  - **expired** — a single-use/expired link returns an error in the URL hash; detected and shown as plain copy noting the one-hour expiry, with a **request-a-new-link** action rather than a raw error string.
+  - **success** — password updated, with a path back to the site.
+- A **"Forgot Password?"** link on the **sign-in view only** of the auth modal ([src/components/auth/AuthModal.tsx](../src/components/auth/AuthModal.tsx)); it closes the modal and navigates to `/reset-password`.
+- `redirectTo` is derived from **`window.location.origin`**, never a hardcoded domain, so the flow works from whatever origin it is served on.
+- Mode detection checks `getSession()` on mount **and** registers its own `onAuthStateChange` listener with an idempotency guard, to survive the `detectSessionInUrl` timing race (the recovery token can be consumed from the hash before a listener mounts). The shared `useAuth.ts` listener was left unchanged.
+
+**Verified end to end on production (2026-08-25):**
+- Reset email **delivered to the inbox, not spam**, via the configured Gmail SMTP.
+- Recovery link landed correctly in **set** mode.
+- Password **updated** successfully.
+- **Sign-out then sign-in with the new password confirmed.**
+- The **single-use / expired-link path** was exercised and showed the plain-language copy with the request-new-link action.
+
+**Adjacent cleanup shipped the same day:**
+- **`VITE_ADMIN_EMAIL` removed as dead configuration** from `.env.example` and `CURSOR_INSTRUCTIONS.md`. It was never referenced by application code — admin access is decided by `user_profiles.role` via `useAdmin.ts`, not by any email env var — so a maintainer who set it would have gained nothing. `CURSOR_INSTRUCTIONS.md` now states plainly that admin is granted by setting `user_profiles.role` to `'admin'` (via the Users tab by an existing admin, or directly in the database if none is available).
+- The **contributor guide generator** ([scripts/generate_guide_pdf.py](../scripts/generate_guide_pdf.py)) was corrected to match the shipped app: the "Forgot Password?" instructions now note the one-hour link expiry, and the account-creation steps reference the modal's real labels ("Don't have an account? Create one" and the "Create Account" button) instead of the nonexistent "Sign Up" text.
+
+> **Note on Tier 1 completeness:** this closes the password-reset deliverable, but the *second* Tier 1 item — **capturing `admin_users_view` into a committed repo migration** (§3) — remains open. Tier 1 as a whole is not complete until that view is reproducible from source.
+
+### 10.2 Supabase configuration record (not in the repo — recorded here so a successor can discover it)
+
+None of the following lives in version control; it is dashboard state. A successor rebuilding or auditing the project would have no way to find it otherwise:
+
+- **Custom SMTP:** enabled, via `smtp.gmail.com:587`, sending as the stake mailbox (`bountifulsouthstake@gmail.com`). This is what delivers all auth mail, including recovery links.
+- **Site URL and redirect allowlist:** set to the custom domain with a wildcard path (`https://history.bountifulsouthstake.org/**`). `/reset-password` is therefore permitted in production. **Localhost is not on the allowlist**, so the recovery redirect cannot be tested locally — it must be exercised on the deployed site.
+- **Email link expiry:** **3600 seconds (one hour)**. The reset email template's copy is matched to this value, and so now is the contributor guide (§10.1).
+- **Minimum password length:** **6**, matching the app's client-side validation in both signup and the reset **set** form.
+- **Leaked-password protection:** **unavailable on the current plan** (the `auth_leaked_password_protection` advisor WARN in §9.2 reflects this; it is not a one-click fix while the plan lacks the feature).
+
+### 10.3 Recovery trust model — a fact a successor must understand
+
+Because password recovery **signs the user in via an emailed link**, whoever controls the destination mailbox can reset and enter any account registered to that address. The reset flow is, by design, only as strong as control of the inbox.
+
+The operational consequence is specific and load-bearing here: the **sole admin account is registered to the stake mailbox** (`bountifulsouthstake@gmail.com`), which is also the SMTP sender. **Control of the stake mailbox is therefore effectively control of the admin account** — anyone who can read that inbox can trigger a reset and take over admin. This is the same single-point-of-failure surfaced in §7 (one admin account), now with a concrete compromise path.
+
+**Flagged for the operator's manual (§5):** the manual must state that the stake mailbox is a privileged credential — its access list is effectively the admin access list — and that transferring the calling includes securing that mailbox (rotating its password, reviewing who can read it) exactly as if handing over the admin account itself.
+
+### 10.4 Open items — current state (2026-08-25)
+
+Consolidated snapshot after this session. Cross-references existing entries; two items are newly recorded.
+
+- **`pending_portraits` exposes uploader emails from `auth.users` to `anon`** — still open (§9.2). ERROR-class advisor finding; same class as the closed `admin_users_view` email exposure, but to the `anon` role. Needs its own remediation.
+- **File F pending — six lockable tables.** [migration_enable_rls_disabled_tables.sql](../supabase/migration_enable_rls_disabled_tables.sql) remains unapplied (§9.1, §9.2). It now locks down only 6 of the 8 tables; **`contacts` and `talk_transcripts` are deliberately held back** because the transcript-review side app shares this database and uses the **anon key for full CRUD on both** — enabling default-deny RLS would silently break it. Those two require the side-app's DB role to be grounded before they can be locked.
+- **Fourteen admin modals render inline rather than through portals** — **newly recorded.** A stacking/z-index fragility of the same kind already fixed in the Users tab (commit `8ec259a`). Not yet triaged as a tier item; recorded so it is not rediscovered from scratch.
+- **RLS coverage across all `public` tables is unreviewed** — still open (§8). No systematic audit of `relrowsecurity` and policy correctness has been performed; the closed findings were specific instances of a general pattern. Warrants a dedicated session.
+- **Dependabot advisories on the repo are untriaged** — **newly recorded.** GitHub reports open advisories on the default branch (surfaced on push: 14 high, 17 moderate, 1 low at last observation). No triage has been done to distinguish exploitable from transitive/dev-only. Recorded as a standing item.
+
+### 10.5 Question for the owner — the generated guide is not in version control
+
+`scripts/stake-history-guide.pdf` is **gitignored** (`.gitignore:38`), so only the generator script (`scripts/generate_guide_pdf.py`) is versioned — the built PDF is not. That means the distributed guide can drift from the script unless someone re-runs it, and there is no record in git of what the currently-circulating PDF actually says. This session regenerated the PDF locally to match the corrected script, but the artifact itself was not committed (it cannot be, while ignored). **Recorded as a question for the owner, not changed unilaterally:** should the generated guide be committed (so the distributed artifact is versioned and reviewable), or is keeping only the generator the intended arrangement?
