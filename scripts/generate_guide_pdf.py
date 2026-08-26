@@ -146,9 +146,9 @@ def build_pdf(output_path):
     pdf.ln(2)
 
     pdf.step(1, 'Click "Sign In" in the top-right corner of the page.')
-    pdf.step(2, 'Click the words "Sign Up" (you\'ll see them near the bottom of the sign-in box).')
+    pdf.step(2, 'Click the words "Don\'t have an account? Create one" (you\'ll see them near the bottom of the sign-in box).')
     pdf.step(3, 'Type your full name, your email address, and choose a password (at least 6 characters). Then type your password again to confirm it.')
-    pdf.step(4, 'Click the "Sign Up" button. You\'re in!')
+    pdf.step(4, 'Click the "Create Account" button. You\'re in!')
 
     pdf.ln(1)
     pdf.set_font("Helvetica", "B", 13)
@@ -159,7 +159,7 @@ def build_pdf(output_path):
     pdf.step(1, 'Click "Sign In" in the top-right corner.')
     pdf.step(2, "Type your email and password, then click Sign In.")
 
-    pdf.tip_box('Forgot your password? On the Sign In screen, click "Forgot Password?" and follow the steps. A reset link will be sent to your email.')
+    pdf.tip_box('Forgot your password? On the Sign In screen, click "Forgot Password?" and enter your email. A reset link will be sent to you. The link is good for one hour.')
 
     # ── SECTION 3: Finding People You Know ────────────────────────────
     pdf.section_title(3, "Finding People You Know")
@@ -230,7 +230,7 @@ def build_pdf(output_path):
     pdf.body_text('Try searching with just their last name first. If they still don\'t appear, they may not be in the system yet. Click "Add" in the top menu to suggest a person, or contact your stake history coordinator.')
 
     pdf.bullet('"I forgot my password." ', "")
-    pdf.body_text('Click "Sign In," then click "Forgot Password?" and type in your email. You\'ll receive an email with a link to create a new password.')
+    pdf.body_text('Click "Sign In," then click "Forgot Password?" and type in your email. You\'ll receive an email with a link to create a new password. That link is good for one hour, so use it soon after it arrives.')
 
     pdf.bullet('"My photo won\'t upload." ', "")
     pdf.body_text("Make sure the file is a common image type (like .jpg or .png) and isn't too large. If a photo from your phone is very large, try emailing it to yourself first -- email often shrinks photos to a more manageable size.")

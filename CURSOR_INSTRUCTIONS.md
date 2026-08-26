@@ -264,10 +264,9 @@ export interface OrganizationWithHistory extends Organization {
 # Supabase
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
-
-# Optional: For admin features
-VITE_ADMIN_EMAIL=bountifulsouthstake@gmail.com
 ```
+
+> Admin access is not granted via an environment variable. It is controlled by `user_profiles.role`: set a user's role to `'admin'` from the Admin → Users tab (by an existing admin), or directly in the database if no admin is available.
 
 ---
 
