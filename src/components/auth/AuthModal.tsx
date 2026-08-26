@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { WatchPromptModal } from './WatchPromptModal'
 
@@ -20,6 +21,7 @@ export function AuthModal({ onClose, onSuccess, initialMode = 'signin' }: AuthMo
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [showWatchPrompt, setShowWatchPrompt] = useState(false)
+  const navigate = useNavigate()
 
   const validateEmail = (email: string): boolean => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -416,17 +418,32 @@ export function AuthModal({ onClose, onSuccess, initialMode = 'signin' }: AuthMo
                 Already have an account? Sign in
               </button>
             ) : (
-              <button
-                onClick={() => {
-                  setIsSignUp(true)
-                  setFullName('')
-                  setError(null)
-                  setMessage(null)
-                }}
-                className="text-sm text-primary-600 hover:text-primary-700 underline"
-              >
-                Don't have an account? Create one
-              </button>
+              <div className="space-y-2">
+                <div>
+                  <button
+                    onClick={() => {
+                      onClose()
+                      navigate('/reset-password')
+                    }}
+                    className="text-sm text-primary-600 hover:text-primary-700 underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+                <div>
+                  <button
+                    onClick={() => {
+                      setIsSignUp(true)
+                      setFullName('')
+                      setError(null)
+                      setMessage(null)
+                    }}
+                    className="text-sm text-primary-600 hover:text-primary-700 underline"
+                  >
+                    Don't have an account? Create one
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

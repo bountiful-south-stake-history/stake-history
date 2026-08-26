@@ -10,6 +10,7 @@ import { PhotoAlbumPage } from './pages/PhotoAlbumPage'
 import { PhotoDetailPage } from './pages/PhotoDetailPage'
 import { MyWatchlistPage } from './pages/MyWatchlistPage'
 import { ArchivesPage } from './pages/ArchivesPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { FeatureAnnouncementModal } from './components/announcements/FeatureAnnouncementModal'
 import { useFeatureAnnouncements } from './hooks/useFeatureAnnouncements'
 
@@ -29,6 +30,7 @@ function App() {
           <Route path="/my-watchlist" element={<MyWatchlistPage />} />
           <Route path="/archives" element={<ArchivesPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
         {!isChecking && showWatchFeature && (
