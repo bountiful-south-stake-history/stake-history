@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { useUsers } from '../../hooks/useUsers'
 import { useAuth } from '../../hooks/useAuth'
@@ -33,12 +34,16 @@ export function AdminUsersTab() {
     setProcessing(userId)
     try {
       const newRole = currentRole === 'admin' ? 'viewer' : 'admin'
-      const { error: updateError } = await supabase
+      const { data: updated, error: updateError } = await supabase
         .from('user_profiles')
         .update({ role: newRole })
         .eq('id', userId)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!updated || updated.length === 0) {
+        throw new Error('No row was updated — you may not have permission to change this user, or the account no longer exists.')
+      }
       refetch()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to update user role')
@@ -64,12 +69,16 @@ export function AdminUsersTab() {
         display_name: users.find((u) => u.id === userId)?.display_name || null,
       }
 
-      const { error: updateError } = await supabase
+      const { data: updated, error: updateError } = await supabase
         .from('user_profiles')
         .update({ display_name: editDisplayName.trim() || null })
         .eq('id', userId)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!updated || updated.length === 0) {
+        throw new Error('No row was updated — you may not have permission to edit this user, or the account no longer exists.')
+      }
 
       if (currentUser) {
         await supabase.from('audit_log').insert({
@@ -101,7 +110,7 @@ export function AdminUsersTab() {
         view_blocked: user?.view_blocked || false,
       }
 
-      const { error: updateError } = await supabase
+      const { data: updated, error: updateError } = await supabase
         .from('user_profiles')
         .update({
           view_blocked: true,
@@ -109,8 +118,12 @@ export function AdminUsersTab() {
           view_blocked_reason: restrictReason.trim() || null,
         })
         .eq('id', userId)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!updated || updated.length === 0) {
+        throw new Error('No row was updated — you may not have permission to restrict this user, or the account no longer exists.')
+      }
 
       if (currentUser) {
         await supabase.from('audit_log').insert({
@@ -147,7 +160,7 @@ export function AdminUsersTab() {
         view_blocked_reason: user?.view_blocked_reason || null,
       }
 
-      const { error: updateError } = await supabase
+      const { data: updated, error: updateError } = await supabase
         .from('user_profiles')
         .update({
           view_blocked: false,
@@ -155,8 +168,12 @@ export function AdminUsersTab() {
           view_blocked_reason: null,
         })
         .eq('id', userId)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!updated || updated.length === 0) {
+        throw new Error('No row was updated — you may not have permission to restore this user, or the account no longer exists.')
+      }
 
       if (currentUser) {
         await supabase.from('audit_log').insert({
@@ -498,8 +515,8 @@ export function AdminUsersTab() {
       {showRestrictModal && (() => {
         const user = users.find((u) => u.id === showRestrictModal)
         if (!user) return null
-        return (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        return createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Restrict View Access</h2>
               <p className="text-gray-700 mb-4">
@@ -537,15 +554,16 @@ export function AdminUsersTab() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )
       })()}
 
       {showRestoreModal && (() => {
         const user = users.find((u) => u.id === showRestoreModal)
         if (!user) return null
-        return (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        return createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Restore View Access</h2>
               <p className="text-gray-700 mb-4">
@@ -567,7 +585,8 @@ export function AdminUsersTab() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )
       })()}
     </>
