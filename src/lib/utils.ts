@@ -31,6 +31,15 @@ export function formatDate(date: string, precision: 'exact' | 'month' | 'year'):
   }
 }
 
+// Day-first long form, e.g. "13 September 2026" (formatDate uses US month-first).
+export function formatDateLong(date: string): string {
+  return parseLocalDate(date).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
 export function formatCallingRange(calling: Calling): string {
   const start = formatDate(calling.sustained_date, calling.sustained_precision)
   const end = calling.released_date
