@@ -13,7 +13,7 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { isAdmin } = useAdmin()
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!showDropdown) return

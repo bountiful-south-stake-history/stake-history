@@ -17,7 +17,7 @@ export function ArrowHint({
 }: ArrowHintProps) {
   const [isVisible, setIsVisible] = useState(true)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const interactedRef = useRef(false)
 
   useEffect(() => {
