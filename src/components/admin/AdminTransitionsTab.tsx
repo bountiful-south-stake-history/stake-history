@@ -4,7 +4,8 @@ import { useOrganizations } from '../../hooks/useOrganizations'
 import { useOrganizationCallings } from '../../hooks/useOrganizationCallings'
 import { usePeopleSearch } from '../../hooks/usePeopleSearch'
 import { useAuth } from '../../hooks/useAuth'
-import { formatDate } from '../../lib/utils'
+import { formatDate, formatDateLong } from '../../lib/utils'
+import { leaderTitleForOrg, resolvePositionIds } from '../../lib/positions'
 import type { Person, Position, Calling } from '../../lib/types'
 
 interface AdminTransitionsTabProps {
@@ -44,6 +45,10 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
   ])
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({})
   const [newPersonName, setNewPersonName] = useState('')
+
+  // Leader title for the batch modal when the org type doesn't imply one (auxiliaries).
+  const [batchLeaderTitle, setBatchLeaderTitle] = useState('')
+  const [leaderTitleOptions, setLeaderTitleOptions] = useState<string[]>([])
 
   const [addCounselorPosition, setAddCounselorPosition] = useState<'counselor1' | 'counselor2' | 'president'>('counselor1')
   const [addCounselorPersonId, setAddCounselorPersonId] = useState<string | null>(null)
@@ -221,6 +226,31 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
     }
   }, [organizations])
 
+  // When the org type doesn't imply a leader title, the batch modal must offer a
+  // choice. Populate it from president-type positions ordered by sort_order.
+  const needsBatchLeaderTitle = !!selectedOrg && leaderTitleForOrg(selectedOrg) === null
+
+  useEffect(() => {
+    if (!showBatchModal || !needsBatchLeaderTitle) {
+      return
+    }
+    let cancelled = false
+    const fetchLeaderTitles = async () => {
+      const { data, error } = await supabase
+        .from('positions')
+        .select('title')
+        .eq('position_type', 'president')
+        .order('sort_order', { ascending: true })
+      if (!cancelled && !error && data) {
+        setLeaderTitleOptions(data.map((p) => p.title))
+      }
+    }
+    fetchLeaderTitles()
+    return () => {
+      cancelled = true
+    }
+  }, [showBatchModal, needsBatchLeaderTitle])
+
   const getMaxPresidencyNumber = () => {
     return callings.reduce((max, calling) => {
       const num = calling.presidency_number ?? 0
@@ -251,12 +281,18 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
         notes: showReleaseModal.notes,
       }
 
-      // Release the current person
+      // Release the current person, stripping the 'Current' status marker while
+      // preserving any real note, mirroring the batch release treatment.
+      const prior =
+        showReleaseModal.notes && showReleaseModal.notes !== 'Current' ? showReleaseModal.notes : null
+      const newNotes = `${prior ? `${prior} ` : ''}Released ${formatDateLong(releaseDate)}`
+
       const { error: updateError } = await supabase
         .from('callings')
         .update({
           released_date: releaseDate,
           released_precision: 'exact',
+          notes: newNotes,
         })
         .eq('id', showReleaseModal.id)
 
@@ -268,7 +304,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
           record_id: showReleaseModal.id,
           action: 'release_calling',
           old_values: oldValues,
-          new_values: { ...oldValues, released_date: releaseDate, released_precision: 'exact' },
+          new_values: { ...oldValues, released_date: releaseDate, released_precision: 'exact', notes: newNotes },
           performed_by: user.id,
           performed_at: new Date().toISOString(),
         })
@@ -338,45 +374,24 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
       const org = organizations.find((o) => o.id === selectedOrgId)
       if (!org) throw new Error('Organization not found')
 
-      const positionMap: Record<string, string> = {}
-      const { data: positions, error: positionsError } = await supabase
-        .from('positions')
-        .select('*')
-        .in('position_type', ['president', 'counselor'])
-
-      if (positionsError) throw positionsError
-
-      if (!positions || positions.length === 0) {
-        throw new Error('No positions found')
-      }
-
-      positions.forEach((p) => {
-        if (p.position_type === 'president') {
-          positionMap['president'] = p.id
-        } else if (p.position_type === 'counselor') {
-          const titleLower = p.title.toLowerCase()
-          const is1st = titleLower.includes('1st') || titleLower.includes('first')
-          const is2nd = titleLower.includes('2nd') || titleLower.includes('second')
-          const isCounselor = titleLower.includes('counselor')
-          
-          // Prefer positions with "counselor" in the title to match the dropdown labels
-          if (is1st) {
-            if (isCounselor || !positionMap['counselor1']) {
-              positionMap['counselor1'] = p.id
-            }
-          }
-          if (is2nd) {
-            if (isCounselor || !positionMap['counselor2']) {
-              positionMap['counselor2'] = p.id
-            }
-          }
-        }
-      })
-
+      // Resolve the exact position for the ordinal the user picked. No type-based
+      // guessing — resolvePositionIds fails loudly if a title is missing or ambiguous.
       let presidencyNum: number
+      let positionId: string
       if (addCounselorPosition === 'president') {
+        const leaderTitle = leaderTitleForOrg(org)
+        if (!leaderTitle) {
+          throw new Error(
+            'Cannot determine the leader title for this organization automatically. Use the Leadership Transition tool to add a president/leader.'
+          )
+        }
+        const posMap = await resolvePositionIds(supabase, [leaderTitle])
+        positionId = posMap[leaderTitle]
         presidencyNum = getMaxPresidencyNumber() + 1
       } else {
+        const counselorTitle = addCounselorPosition === 'counselor1' ? '1st Counselor' : '2nd Counselor'
+        const posMap = await resolvePositionIds(supabase, [counselorTitle])
+        positionId = posMap[counselorTitle]
         const currentBishop = currentPresidencyCallings.find(
           (c) => c.position?.position_type === 'president'
         )
@@ -385,8 +400,6 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
         }
         presidencyNum = currentBishop.presidency_number ?? currentPresidency
       }
-
-      const positionId = positionMap[addCounselorPosition]
 
       const { data: newCalling, error: insertError } = await supabase
         .from('callings')
@@ -612,67 +625,81 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
     try {
       const errors: string[] = []
 
-      if (selectedMembers.size > 0) {
-        const { error: releaseError } = await supabase
-          .from('callings')
-          .update({
-            released_date: releaseDate,
-            released_precision: 'exact',
-          })
-          .in('id', Array.from(selectedMembers))
-
-        if (releaseError) errors.push(`Failed to release members: ${releaseError.message}`)
-      }
+      // Resolve new-leadership positions BEFORE any DB write, so a missing or
+      // ambiguous title (or an unchosen leader title) throws and aborts the entire
+      // save — nothing released, nothing inserted. The outer catch surfaces it.
+      let newCallingsToInsert: {
+        person_id: string
+        organization_id: string
+        position_id: string
+        presidency_number: number
+        sustained_date: string
+        sustained_precision: 'exact'
+      }[] = []
 
       if (newLeadership.some((m) => m.personId)) {
         const org = organizations.find((o) => o.id === selectedOrgId)
-        if (!org) {
-          errors.push('Organization not found')
-        } else {
-          const positionMap: Record<string, string> = {}
-          const { data: positions, error: positionsError } = await supabase
-            .from('positions')
-            .select('*')
-            .in('position_type', ['president', 'counselor'])
+        if (!org) throw new Error('Organization not found')
 
-          if (positionsError) {
-            errors.push(`Failed to fetch positions: ${positionsError.message}`)
-          } else if (!positions || positions.length === 0) {
-            errors.push('No positions found. Please ensure president and counselor positions exist in the database.')
-          } else {
-            positions.forEach((p) => {
-              if (p.position_type === 'president') {
-                positionMap['president'] = p.id
-              } else if (p.position_type === 'counselor') {
-                positionMap['counselor'] = p.id
-              }
-            })
+        // Leader title: implied by org type, or chosen in the modal for auxiliaries.
+        const leaderTitle = leaderTitleForOrg(org) ?? batchLeaderTitle
+        if (!leaderTitle) {
+          throw new Error('Please choose a leader title for this organization before saving.')
+        }
 
-            if (!positionMap['president'] || !positionMap['counselor']) {
-              errors.push('Missing required positions. Please ensure both president and counselor positions exist.')
-            } else {
-              const newCallingsToInsert = newLeadership
-                .filter((m) => m.personId)
-                .map((m) => ({
-                  person_id: m.personId!,
-                  organization_id: selectedOrgId,
-                  position_id: positionMap[m.position === 'president' ? 'president' : 'counselor'],
-                  presidency_number: nextPresidencyNumber,
-                  sustained_date: sustainedDate,
-                  sustained_precision: 'exact' as const,
-                }))
+        // Title comes from the member's slot, not its order in the form: the
+        // president slot takes the leader title, counselor1 -> 1st, counselor2 -> 2nd.
+        const members = newLeadership.filter((m) => m.personId)
+        const titleForMember = (m: NewLeadershipMember): string =>
+          m.position === 'president'
+            ? leaderTitle
+            : m.position === 'counselor1'
+              ? '1st Counselor'
+              : '2nd Counselor'
 
-              if (newCallingsToInsert.length > 0) {
-                const { error: insertError } = await supabase
-                  .from('callings')
-                  .insert(newCallingsToInsert)
+        const posMap = await resolvePositionIds(supabase, members.map(titleForMember))
 
-                if (insertError) {
-                  errors.push(`Failed to create new callings: ${insertError.message}`)
-                }
-              }
-            }
-          }
+        newCallingsToInsert = members.map((m) => ({
+          person_id: m.personId!,
+          organization_id: selectedOrgId,
+          position_id: posMap[titleForMember(m)],
+          presidency_number: nextPresidencyNumber,
+          sustained_date: sustainedDate,
+          sustained_precision: 'exact' as const,
+        }))
+      }
+
+      if (selectedMembers.size > 0) {
+        // Release each outgoing row and, mirroring
+        // COALESCE(NULLIF(notes,'Current') || ' ', '') || 'Released <date>',
+        // strip the 'Current' status marker while preserving any real note.
+        const releaseResults = await Promise.all(
+          Array.from(selectedMembers).map((id) => {
+            const existing = callings.find((c) => c.id === id)
+            const prior = existing?.notes && existing.notes !== 'Current' ? existing.notes : null
+            const newNotes = `${prior ? `${prior} ` : ''}Released ${formatDateLong(releaseDate)}`
+            return supabase
+              .from('callings')
+              .update({
+                released_date: releaseDate,
+                released_precision: 'exact',
+                notes: newNotes,
+              })
+              .eq('id', id)
+          })
+        )
+
+        const releaseError = releaseResults.find((r) => r.error)?.error
+        if (releaseError) errors.push(`Failed to release members: ${releaseError.message}`)
+      }
+
+      if (newCallingsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('callings')
+          .insert(newCallingsToInsert)
+
+        if (insertError) {
+          errors.push(`Failed to create new callings: ${insertError.message}`)
         }
       }
 
@@ -689,6 +716,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
           { position: 'counselor2', personId: null, personName: '' },
         ])
                   setSearchTerms({})
+                  setBatchLeaderTitle('')
                   setShowBatchModal(false)
                   onActionComplete?.()
                   window.location.reload()
@@ -1399,6 +1427,29 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                 New {getPresidencyLabel()} (Presidency #{nextPresidencyNumber})
               </h3>
 
+              {needsBatchLeaderTitle && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Leader Title
+                  </label>
+                  <select
+                    value={batchLeaderTitle}
+                    onChange={(e) => setBatchLeaderTitle(e.target.value)}
+                    className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Select a leader title…</option>
+                    {leaderTitleOptions.map((title) => (
+                      <option key={title} value={title}>
+                        {title}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    This organization's type doesn't imply a leader title. Choose one before saving.
+                  </p>
+                </div>
+              )}
+
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Sustained Date
@@ -1439,6 +1490,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                     { position: 'counselor2', personId: null, personName: '' },
                   ])
                   setSearchTerms({})
+                  setBatchLeaderTitle('')
                 }}
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
@@ -1446,7 +1498,12 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
               </button>
               <button
                 onClick={handleBatchSave}
-                disabled={processing === 'batch'}
+                disabled={
+                  processing === 'batch' ||
+                  (needsBatchLeaderTitle &&
+                    newLeadership.some((m) => m.personId) &&
+                    !batchLeaderTitle)
+                }
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
               >
                 {processing === 'batch' ? 'Saving...' : 'Save All'}
