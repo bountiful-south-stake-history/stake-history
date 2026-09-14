@@ -3,16 +3,12 @@ import { Link } from 'react-router-dom'
 import { getPeopleCount } from '../hooks/usePeople'
 import { useOrganizations } from '../hooks/useOrganizations'
 import { PersonSearch } from '../components/search/PersonSearch'
+import { isDiscontinuedOrg } from '../lib/utils'
 import type { Organization } from '../lib/types'
-
-function isDiscontinued(org: Organization): boolean {
-  const name = org.name.toLowerCase()
-  return name.includes('mission') || (org.org_type === 'ward' && name.includes('57th'))
-}
 
 function getDisplayName(org: Organization): string {
   const name = org.name.toLowerCase()
-  const discontinued = isDiscontinued(org)
+  const discontinued = isDiscontinuedOrg(org)
   const asterisk = discontinued ? '*' : ''
   
   if (name.includes('executive secretary')) {
@@ -145,7 +141,7 @@ export function HomePage() {
 
   const { stakeLeadership, auxiliaries, wardsAndBranches } = categorizeOrganizations(organizations)
   
-  const hasDiscontinued = organizations.some(org => isDiscontinued(org))
+  const hasDiscontinued = organizations.some(org => isDiscontinuedOrg(org))
 
   const renderOrgCard = (org: Organization) => {
     const displayName = getDisplayName(org)

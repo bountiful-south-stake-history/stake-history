@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { isDiscontinuedOrg } from '../../lib/utils'
 import type { Organization } from '../../lib/types'
 
 interface MobileOrgListProps {
@@ -99,10 +100,7 @@ function getCardStyle(org: Organization): string {
     return 'bg-[#1e3a5f] text-white border-2 border-[#152a47]'
   }
   
-  if (
-    name.includes('mission') ||
-    (org.org_type === 'ward' && name.includes('57th'))
-  ) {
+  if (isDiscontinuedOrg(org)) {
     return 'bg-[#7851a9] text-white border-2 border-[#5d3d8a]'
   }
   
