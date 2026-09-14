@@ -40,7 +40,7 @@ export function AboutPage() {
       <section className="mb-8">
         <h2 className="text-2xl font-bold text-primary-700 mb-4">Our Wards and Units</h2>
         <p className="text-gray-700 mb-4">
-          The stake currently includes eight wards and one branch:
+          The stake currently includes six wards and one branch:
         </p>
         <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
           <ul className="space-y-2 text-gray-700">
@@ -50,12 +50,16 @@ export function AboutPage() {
             <li><strong>Bountiful 15th Ward</strong> – Organized April 21, 1957</li>
             <li><strong>Bountiful 20th Ward</strong> – Organized April 30, 1961</li>
             <li><strong>Bountiful 25th Ward</strong> – Organized December 15, 1963</li>
-            <li><strong>Bountiful 36th Ward</strong> – Organized September 8, 1968</li>
-            <li><strong>Bountiful 39th Ward</strong> – Organized October 25, 1970</li>
             <li><strong>Heritage Branch</strong> – Organized April 12, 1992</li>
           </ul>
           <p className="text-gray-600 text-sm mt-4 italic">
             The Bountiful 57th Ward (Singles Ward) operated from January 30, 1983, until March 15, 1992.
+          </p>
+          <p className="text-gray-600 text-sm mt-4 italic">
+            The Bountiful 36th Ward operated from September 8, 1968, until September 13, 2026, when it was absorbed into the Bountiful 7th, 15th, and 20th Wards in a boundary realignment to strengthen wards.
+          </p>
+          <p className="text-gray-600 text-sm mt-4 italic">
+            The Bountiful 39th Ward operated from October 25, 1970, until September 13, 2026, when it was divided between the Bountiful 14th and 25th Wards in a boundary realignment to strengthen wards.
           </p>
         </div>
       </section>

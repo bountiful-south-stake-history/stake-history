@@ -1,4 +1,8 @@
-import type { Calling } from './types'
+import type { Calling, Organization } from './types'
+
+export function isDiscontinuedOrg(org: Pick<Organization, 'discontinued_date'>): boolean {
+  return !!org.discontinued_date
+}
 
 export function parseLocalDate(dateString: string): Date {
   if (dateString.includes('T')) {

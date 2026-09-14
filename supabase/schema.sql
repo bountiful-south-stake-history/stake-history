@@ -412,9 +412,25 @@ BEGIN
     ('Bountiful 57th Ward', '57th Ward', 'ward', stake_id, '1983-01-30', 28);
     
     -- Update 57th Ward as discontinued
-    UPDATE organizations SET discontinued_date = '1992-03-15' 
+    UPDATE organizations SET discontinued_date = '1992-03-15'
     WHERE name = 'Bountiful 57th Ward';
-    
+
+    -- Update 36th and 39th Wards as discontinued (boundary realignment, 13 September 2026)
+    UPDATE organizations
+    SET discontinued_date = '2026-09-13',
+        notes = 'Organized from Bountiful 4th, 7th, and 20th Wards on 8 September 1968. Discontinued 13 September 2026 in a boundary realignment to strengthen wards. Members were absorbed into the Bountiful 7th, 15th, and 20th Wards.'
+    WHERE name = 'Bountiful 36th Ward';
+
+    UPDATE organizations
+    SET discontinued_date = '2026-09-13',
+        notes = 'Organized from Bountiful 14th and 25th Wards on 25 October 1970. Discontinued 13 September 2026 in a boundary realignment to strengthen wards. Members were divided between the Bountiful 14th and 25th Wards.'
+    WHERE name = 'Bountiful 39th Ward';
+
+    -- Record Stake Mission discontinuation (First Presidency directive, spring 2002)
+    UPDATE organizations
+    SET discontinued_date = '2002-05-19'
+    WHERE name = 'Stake Mission';
+
     -- Branches
     INSERT INTO organizations (name, short_name, org_type, parent_org_id, organized_date, sort_order) VALUES
     ('Heritage Branch', 'Heritage', 'branch', stake_id, '1992-04-12', 40);
