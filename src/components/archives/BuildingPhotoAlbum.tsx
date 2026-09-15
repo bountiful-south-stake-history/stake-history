@@ -53,6 +53,7 @@ export function BuildingPhotoAlbum({ buildingId, buildingName }: BuildingPhotoAl
         .select('id, photo_url, caption, approximate_date, event_context, focal_x, focal_y, submitter_name, submitted_at, additional_people')
         .eq('building_id', buildingId)
         .eq('status', 'approved')
+        .is('album_id', null) // exclude scrapbook album pages from building galleries
         .order('submitted_at', { ascending: false })
 
       if (fetchError) throw fetchError

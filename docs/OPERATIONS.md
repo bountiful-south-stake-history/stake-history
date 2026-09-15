@@ -53,6 +53,17 @@ Every SQL script run by hand against production is recorded in **`docs/data-chan
 
 ---
 
+## Inspecting the database (read-only MCP) and bulk ingest
+
+- **Read-only inspection** of the production database is done through the **`supabase-stake`** MCP server (user-scope entry in `~/.claude.json`, `npx @supabase/mcp-server-supabase --read-only`, project ref `kywsocmgkrckwhnmhtfz`). It connects as `supabase_read_only_user` and can only `SELECT`.
+  - Its `SUPABASE_ACCESS_TOKEN` must be **either an unscoped (legacy) personal token, or a scoped token whose scope includes project `kywsocmgkrckwhnmhtfz`**. This token is shared with the `supabase-appointments` server, which points at a *different* project in a *different* org — so a token scoped only to that org will authenticate but be refused here.
+  - A **`"Your account does not have the necessary privileges … Access to project 'kywsocmgkrckwhnmhtfz' was denied"`** error means the **token is scoped to the wrong organization**, not that the project is missing or the server is misconfigured. Fix it by pointing `supabase-stake` at a token that includes this project's org, then restart the MCP server. (A project-scoped `supabase` entry with a token dedicated to this project also exists in the repo's local settings and can be used as the correct-scope reference.)
+
+- **Bulk production ingest is a local developer task, not an admin action.** Large imports (e.g. scanned scrapbook albums via [`scripts/import-album.ts`](../scripts/import-album.ts)) are run **by the developer locally** with the **service-role key loaded from a gitignored `.env.local`** (variable `SUPABASE_SERVICE_ROLE_KEY`, no `VITE_` prefix — a `VITE_` var would be bundled into the public browser build). The service-role key bypasses RLS and is a password-grade secret; it is never committed and never used from the browser. The **anon key is never used for writes** — the import script decodes the key and refuses to run unless its role is `service_role`.
+  - Every such run still follows the standing rule: **the migration it depends on is applied by hand and logged in [`docs/data-changes.md`](./data-changes.md)** in the same PR, and the album stays `status='pending'` (invisible) until it is reviewed and approved.
+
+---
+
 ## What requires a developer
 
 Some content is code, not data, and cannot be changed through any UI:

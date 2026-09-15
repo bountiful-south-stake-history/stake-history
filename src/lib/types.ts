@@ -122,6 +122,33 @@ export interface Photo {
   reviewed_at?: string
   reviewed_by?: string
   rejection_reason?: string
+  // Album linkage (added in migration 20260915120000_add_albums.sql).
+  // Null for every non-album photo; set only for scanned scrapbook pages.
+  album_id?: string | null
+  album_page?: number | null
+  web_path?: string | null      // storage path of the 2000px web render
+  thumb_path?: string | null    // storage path of the 400px thumbnail
+}
+
+export interface Album {
+  id: string
+  title: string
+  slug: string
+  description?: string | null
+  organization_id?: string | null
+  building_id?: string | null
+  approximate_date?: string | null
+  date_range_start?: string | null
+  date_range_end?: string | null
+  contributor_names?: string | null
+  originals_url?: string | null
+  originals_note?: string | null
+  cover_photo_id?: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  page_count?: number | null
+  created_at: string
+  reviewed_at?: string | null
+  reviewed_by?: string | null
 }
 
 export interface PortraitSubmission {
