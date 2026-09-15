@@ -59,7 +59,7 @@ CREATE TABLE public.albums (
   page_count        INTEGER,
   created_at        TIMESTAMPTZ DEFAULT now(),
   reviewed_at       TIMESTAMPTZ,
-  reviewed_by       TEXT
+  reviewed_by       UUID                  -- matches photos.reviewed_by (uuid)
 );
 
 -- ---------------------------------------------------------------------

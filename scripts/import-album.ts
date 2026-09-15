@@ -190,7 +190,7 @@ interface Args {
   originalsUrl?: string; originalsNote?: string
   dryRun: boolean; help: boolean
 }
-const DEFAULT_SUBMITTER_EMAIL = 'bountifulsouthstake@gmail.com'
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 function parseArgs(argv: string[]): Args {
   const a: Args = { dryRun: false, help: false }
   for (let i = 0; i < argv.length; i++) {
@@ -222,12 +222,14 @@ const HELP = `
 import-album.ts — bulk-ingest one scanned scrapbook as an ordered album.
 
 Usage:
-  npx tsx scripts/import-album.ts --folder <path> --title "..." --slug <slug> [options]
+  npx tsx scripts/import-album.ts --folder <path> --title "..." --slug <slug> --contributor-email <email> [options]
 
 Required:
   --folder <path>        Folder of page scans for ONE scrapbook (one folder = one album)
   --title "..."          Album title, e.g. "Relief Society Scrapbook, 1998-2003"
   --slug <slug>          URL-safe unique slug, e.g. rs-1998-2003 (also the storage prefix)
+  --contributor-email <email>  Contact email stamped on every page (-> photos.submitter_email,
+                         which is NOT NULL). No default — must be supplied.
 
 Optional metadata:
   --org <uuid>           organizations.id to attach (e.g. the discontinued ward)
@@ -236,8 +238,6 @@ Optional metadata:
   --date-start <YYYY-MM-DD>   Structured range start
   --date-end   <YYYY-MM-DD>   Structured range end
   --contributors "..."   Names of the members who scanned/contributed (-> submitter_name)
-  --contributor-email <email>  Contact email for the pages (-> photos.submitter_email,
-                         which is NOT NULL). Defaults to ${DEFAULT_SUBMITTER_EMAIL}.
   --description "..."     Album description
   --originals-url <url>   Link to the off-site archival originals (Google Drive, etc.)
   --originals-note "..."  Free-text note about where the originals live
@@ -303,10 +303,15 @@ async function main() {
   const args = parseArgs(process.argv.slice(2))
   if (args.help) { console.log(HELP); return }
 
-  // Validate required args
+  // Validate required args (fails here, before any network call)
   const missing = ['folder', 'title', 'slug'].filter((k) => !(args as Record<string, unknown>)[k])
+  if (!args.contributorEmail) missing.push('contributor-email')
   if (missing.length) {
     console.error(`Missing required argument(s): ${missing.map((m) => '--' + m).join(', ')}\nRun with --help for usage.`)
+    process.exit(1)
+  }
+  if (!EMAIL_RE.test(args.contributorEmail!)) {
+    console.error(`--contributor-email "${args.contributorEmail}" is not a valid email address.`)
     process.exit(1)
   }
   const folder = args.folder!
@@ -370,7 +375,7 @@ async function main() {
         note = `  [!] cannot process: ${err instanceof Error ? err.message : err}`
       }
       const cap = captions.get(files[i])?.caption ?? `Page ${page}`
-      const email = args.contributorEmail ?? DEFAULT_SUBMITTER_EMAIL
+      const email = args.contributorEmail!
       console.log(`[${page}/${files.length}] ${files[i]} -> page ${page}`)
       console.log(`      upload ${webPath}   (${(webBytes / 1024).toFixed(0)} KB)`)
       console.log(`      upload ${thumbPath} (${(thumbBytes / 1024).toFixed(0)} KB)`)
@@ -472,7 +477,7 @@ async function main() {
           caption: cap?.caption ?? `Page ${page}`,          // caption is NOT NULL
           approximate_date: cap?.approximate_date ?? args.date ?? null,
           submitter_name: args.contributors ?? 'Stake Admin',
-          submitter_email: args.contributorEmail ?? DEFAULT_SUBMITTER_EMAIL, // NOT NULL
+          submitter_email: args.contributorEmail!, // required flag; NOT NULL column
           status: 'approved',
         })
         if (error) {
