@@ -49,6 +49,8 @@ This Supabase project **also serves a second, separate application**: the transc
 
 The consequence is a hard rule: **any change to database permissions (RLS, grants, revokes) must account for both applications.** A change that looks safe from inside this repository can silently break the transcript app, because this repo cannot see how that other app authenticates. This was discovered during the security work — a repo-scoped dependency check is **insufficient** here, and the security plan deliberately holds those two tables back from lockdown until the other app's database role is confirmed.
 
+Every SQL script run by hand against production is recorded in **`docs/data-changes.md`** — the index of what ran, when, and how it was verified; add an entry there in the same PR that adds the migration file. `npm run lint` is currently unrunnable: `eslint.config.js` targets ESLint 9 / typescript-eslint but `package.json` still declares ESLint 8 — tracked as a separate migration.
+
 ---
 
 ## What requires a developer
