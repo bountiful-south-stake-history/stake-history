@@ -82,6 +82,7 @@ Read these before changing anything. They are the memory of why the system is th
 - **`docs/admin-ux-inventory.md`** — the factual, code-cited inventory of the admin surface: what every tab and action does, what tables it touches, and where the sharp edges are. This is the grounding all other claims trace back to.
 - **`docs/admin-ux-verification.md`** — the verification pass over that inventory: literal code, grep results, and a verdict for each load-bearing claim. Consult it when you need to trust a specific claim.
 - **`docs/admin-remediation-plan.md`** — the decisions and priorities for fixing the admin surface, the closed and open security findings, the recorded Supabase configuration (§10.2), and the dated session log of work done. This is where "what was decided and why" lives; do not re-litigate its closed decisions without cause.
+- **`docs/moderation-model.md`** — the canon for how contributions are reviewed: why the site is moving from pre-moderation to post-moderation, the two trust tiers, the flag/hide/revert rules, what exists today, and what each planned PR adds.
 
 ---
 

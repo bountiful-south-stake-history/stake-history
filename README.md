@@ -69,7 +69,7 @@ npm run dev
 
 This project is maintained by the Bountiful Utah South Stake. Contact the Stake Executive Secretary for access.
 
-**Maintainers and successors:** read [docs/OPERATIONS.md](docs/OPERATIONS.md) first — it records the continuity facts (hosting, admin access, account recovery, the shared database, and what requires a developer) that are not discoverable from the running site.
+**Maintainers and successors:** read [docs/OPERATIONS.md](docs/OPERATIONS.md) first — it records the continuity facts (hosting, admin access, account recovery, the shared database, and what requires a developer) that are not discoverable from the running site. For how contributions are reviewed and why the site is moving to post-moderation, see [docs/moderation-model.md](docs/moderation-model.md).
 
 ## 📄 License
 
