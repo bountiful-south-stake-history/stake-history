@@ -1,0 +1,70 @@
+-- =====================================================================
+-- 20260915140000_drop_anon_people_update.sql   (DRAFT — NOT APPLIED)
+-- =====================================================================
+-- Closes the portrait-review bypass on the `people` table.
+--
+-- STATUS: DRAFT / NOT YET APPLIED. Apply by hand in the Supabase SQL Editor
+-- (project kywsocmgkrckwhnmhtfz), then log it in docs/data-changes.md in the
+-- SAME PR. Committed on branch fix/people-update-policy.
+--
+-- PROBLEM (verified via pg_policies, 2026-09-15):
+-- `people` carries an UPDATE policy for {anon, authenticated} with both
+-- USING (true) and WITH CHECK (true):
+--     "Anyone can update portrait fields"  UPDATE {anon,authenticated}
+--         USING (true)  WITH CHECK (true)
+-- So the public anon key can overwrite portrait_url / portrait_pending (indeed
+-- any column) on ANY person, bypassing portrait review entirely — the portrait
+-- equivalent of the submission-INSERT holes closed in
+-- 20260915130000_tighten_submission_policies.sql. This is the last open item
+-- from that PR's Step 0.
+--
+-- WHY IT IS SAFE TO DROP (grounded):
+--   * grep of src/ shows every write to `people` comes from an ADMIN component:
+--       - AdminPortraitsTab.tsx (portrait approve / replace / reject) :437,610,621,709
+--       - AdminPeopleTab.tsx :72   (edit person)
+--       - AdminCorrectionsTab.tsx :25  (set familysearch_url)
+--       - AdminTransitionsTab.tsx :551 (insert new person)
+--     There is NO non-admin (anon / authenticated public) code path that updates
+--     `people`. The portrait SUBMISSION flow inserts into `portrait_submissions`,
+--     it does not touch `people`.
+--   * Those admin writes are authorized by the separate, unchanged policy
+--     "Admin full access people" (FOR ALL, USING EXISTS(user_profiles ... role
+--     ='admin')). With WITH CHECK omitted on a FOR ALL policy, Postgres reuses
+--     the USING expression as the check for UPDATE's new row, so admin portrait
+--     approval keeps working after this policy is dropped.
+--   * With RLS enabled and no remaining UPDATE policy that anon/authenticated
+--     can satisfy, anon/authenticated UPDATEs on `people` are simply denied —
+--     no grant change is required; the policy is the gate.
+--
+-- SCOPE: this migration touches ONLY the one UPDATE policy. SELECT policies
+-- ("Public read people", "Public read access to people") and the admin ALL
+-- policy are left exactly as-is.
+--
+-- Supabase SQL Editor compatible: single statement, no BEGIN/COMMIT.
+-- =====================================================================
+
+DROP POLICY "Anyone can update portrait fields" ON public.people;
+
+
+-- =====================================================================
+-- ROLLBACK (comment only — restores the original policy verbatim)
+-- =====================================================================
+-- CREATE POLICY "Anyone can update portrait fields" ON public.people
+--   FOR UPDATE TO anon, authenticated
+--   USING (true) WITH CHECK (true);
+-- =====================================================================
+
+
+-- =====================================================================
+-- VERIFICATION after apply (READ-ONLY — safe to run in the SQL Editor)
+-- =====================================================================
+-- 1. The anon UPDATE policy is gone; only the admin ALL + public SELECT remain:
+--       SELECT policyname, cmd, roles FROM pg_policies
+--        WHERE schemaname='public' AND tablename='people' ORDER BY cmd, policyname;
+--    Expect: "Admin full access people" (ALL), "Public read access to people"
+--    (SELECT), "Public read people" (SELECT). No UPDATE policy for anon.
+-- 2. Behavioral (see the PR description for the exact curl):
+--    - Admin portrait approval (AdminPortraitsTab) still updates people.portrait_url.
+--    - An anon curl PATCH of /rest/v1/people?id=eq.<id> setting portrait_url now
+--      returns 0 rows updated / is denied (was previously allowed).
+-- =====================================================================
