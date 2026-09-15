@@ -248,8 +248,11 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
   }
 
   const validateImageFile = (file: File): boolean => {
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
-    return validTypes.includes(file.type) || !!file.name.toLowerCase().match(/\.(jpg|jpeg|png|webp|heic|heif)$/i)
+    // HEIC/HEIF is intentionally excluded: the photos bucket only accepts
+    // JPEG/PNG/WebP, and browsers can't decode HEIC on a canvas to convert it
+    // client-side, so a HEIC upload would fail. iPhone users should choose JPEG.
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp']
+    return validTypes.includes(file.type) || !!file.name.toLowerCase().match(/\.(jpg|jpeg|png|webp)$/i)
   }
 
   const handleDrag = (e: React.DragEvent, isPortrait: boolean) => {
@@ -284,7 +287,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
 
     const imageFiles = files.filter(file => validateImageFile(file))
     if (imageFiles.length === 0) {
-      setError('Please drop image files only (JPEG, PNG, WebP, or HEIC)')
+      setError('Please drop image files only (JPEG, PNG, or WebP). iPhone photos: choose JPEG, not HEIC, when sharing.')
       return
     }
 
@@ -1525,7 +1528,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/jpeg,image/png,image/webp,image/heic"
+                      accept="image/jpeg,image/png,image/webp"
                       onChange={handleFileSelect}
                       className="hidden"
                       disabled={submitting || success}
@@ -1564,7 +1567,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                           For group photos, use the Photos tab
                         </p>
                         <p className="text-xs text-gray-400 mt-2">
-                          JPEG, PNG, WebP, or HEIC format • or drag and drop here
+                          JPEG, PNG, or WebP (iPhone: choose JPEG, not HEIC) • or drag and drop here
                         </p>
                       </>
                     )}
@@ -1937,7 +1940,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                       <input
                         ref={photosInputRef}
                         type="file"
-                        accept="image/jpeg,image/png,image/webp,image/heic"
+                        accept="image/jpeg,image/png,image/webp"
                         multiple
                         onChange={handlePhotosSelect}
                         className="hidden"
@@ -1955,7 +1958,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                             Select Photos (up to {MAX_PHOTOS})
                           </button>
                           <p className="text-sm text-gray-500 mt-2">
-                            JPEG, PNG, WebP, or HEIC format
+                            JPEG, PNG, or WebP (iPhone: choose JPEG, not HEIC)
                           </p>
                           <p className="text-sm text-gray-400 mt-1">
                             or drag and drop images here
@@ -2149,7 +2152,7 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
                           <input
                             ref={photosInputRef}
                             type="file"
-                            accept="image/jpeg,image/png,image/webp,image/heic"
+                            accept="image/jpeg,image/png,image/webp"
                             multiple
                             onChange={handlePhotosSelect}
                             className="hidden"
