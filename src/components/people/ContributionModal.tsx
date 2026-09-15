@@ -1284,9 +1284,9 @@ export function ContributionModal({ person, onUploadComplete, onCancel, initialT
           </div>
 
           {contributionType === 'portrait' && hasPendingPortrait && (
-            <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
-              <p className="text-sm text-yellow-800">
-                ⚠️ You already have a portrait pending review. Please wait for it to be approved before submitting another.
+            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+              <p className="text-sm text-blue-700">
+                ℹ️ A portrait for this person is already awaiting review. You're welcome to add yours too — an administrator will choose which to use.
               </p>
             </div>
           )}
