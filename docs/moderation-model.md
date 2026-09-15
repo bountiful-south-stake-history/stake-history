@@ -27,7 +27,7 @@ The account is the line between "review before" and "review after."
 
 **(a) Nothing is destructive.** Every tag, context note, and memory is its **own row**, stamped with its author and time. A takedown **hides**, it does not delete; the history is retained and a **revert is one action**. This is what makes live posting safe: any mistake is reversible, so the cost of being wrong is low.
 
-**(b) Flags are the queue.** Every photo, tag, and memory carries a **flag** button. A flag creates a record and notifies the admin address. After **two independent flags**, an item **auto-hides** pending review. The steward reacts to flags instead of pre-screening everything.
+**(b) Flags are the queue.** Every photo, tag, and memory carries a **flag** button. A flag creates a record and notifies the admin address. After **a small number of independent flags** (threshold undecided; see Open questions), an item **auto-hides** pending review. The steward reacts to flags instead of pre-screening everything.
 
 **(c) Passive awareness replaces approval.** Instead of an approval gate, the steward gets a **periodic digest** they can skim — a low-effort way to stay aware of what's being added without standing between members and the site.
 
