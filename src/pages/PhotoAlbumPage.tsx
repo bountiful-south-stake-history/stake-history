@@ -77,6 +77,7 @@ export function PhotoAlbumPage() {
           `)
           .eq('status', 'approved')
           .is('building_id', null)
+          .is('album_id', null) // exclude scrapbook album pages from the main grid
           .order('submitted_at', { ascending: false })
 
         if (photosError) throw photosError

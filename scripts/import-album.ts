@@ -44,7 +44,10 @@ const THUMB_LONG_EDGE = 400
 const WEB_QUALITY = 85
 const THUMB_QUALITY = 80
 const CONCURRENCY = 4
-const SOURCE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.heic']
+// HEIC is intentionally excluded: sharp's heif support on this toolchain is
+// AVIF-only (format.heif.fileSuffix = ['.avif']); Apple HEIC/HEVC decode is not
+// guaranteed and can fail mid-import. Convert HEIC scans to JPEG before running.
+const SOURCE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.tif', '.tiff']
 // Fixed namespace for UUIDv5 page ids. Arbitrary but MUST stay constant, or
 // re-runs would compute different ids and defeat idempotency.
 const ALBUM_ID_NAMESPACE = '6f9c3c4a-3e2b-5a1d-9b7e-2f1a0c8d4e6b'
@@ -183,10 +186,11 @@ interface Args {
   folder?: string; title?: string; slug?: string
   org?: string; building?: string; date?: string
   dateStart?: string; dateEnd?: string
-  contributors?: string; description?: string
+  contributors?: string; contributorEmail?: string; description?: string
   originalsUrl?: string; originalsNote?: string
   dryRun: boolean; help: boolean
 }
+const DEFAULT_SUBMITTER_EMAIL = 'bountifulsouthstake@gmail.com'
 function parseArgs(argv: string[]): Args {
   const a: Args = { dryRun: false, help: false }
   for (let i = 0; i < argv.length; i++) {
@@ -202,6 +206,7 @@ function parseArgs(argv: string[]): Args {
       case '--date-start': a.dateStart = val(); break
       case '--date-end': a.dateEnd = val(); break
       case '--contributors': a.contributors = val(); break
+      case '--contributor-email': a.contributorEmail = val(); break
       case '--description': a.description = val(); break
       case '--originals-url': a.originalsUrl = val(); break
       case '--originals-note': a.originalsNote = val(); break
@@ -231,6 +236,8 @@ Optional metadata:
   --date-start <YYYY-MM-DD>   Structured range start
   --date-end   <YYYY-MM-DD>   Structured range end
   --contributors "..."   Names of the members who scanned/contributed (-> submitter_name)
+  --contributor-email <email>  Contact email for the pages (-> photos.submitter_email,
+                         which is NOT NULL). Defaults to ${DEFAULT_SUBMITTER_EMAIL}.
   --description "..."     Album description
   --originals-url <url>   Link to the off-site archival originals (Google Drive, etc.)
   --originals-note "..."  Free-text note about where the originals live
@@ -242,9 +249,10 @@ Notes:
   - Pages are ordered by natural filename sort; album_page is the 1-based index.
     Use zero-padded names (page-0001.jpg) so ordering is unambiguous.
   - Optional captions.csv in the folder: "filename,caption,approximate_date" per page.
-  - Source formats accepted: ${SOURCE_EXTENSIONS.join(', ')}. Only a web render
-    (${WEB_LONG_EDGE}px, JPEG q${WEB_QUALITY}) and a thumbnail (${THUMB_LONG_EDGE}px) are uploaded;
-    the source scan is never uploaded.
+    A page with no caption gets "Page N" (the caption column is NOT NULL).
+  - Source formats accepted: ${SOURCE_EXTENSIONS.join(', ')}. HEIC is NOT accepted —
+    convert HEIC scans to JPEG first. Only a web render (${WEB_LONG_EDGE}px, JPEG
+    q${WEB_QUALITY}) and a thumbnail (${THUMB_LONG_EDGE}px) are uploaded; the source scan is never uploaded.
   - Pages are inserted with status='approved'; the ALBUM is created status='pending'.
     Nothing is public until you flip albums.status to 'approved'.
   - Reads SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY from .env.local. The script
@@ -361,11 +369,12 @@ async function main() {
       } catch (err) {
         note = `  [!] cannot process: ${err instanceof Error ? err.message : err}`
       }
-      const cap = captions.get(files[i])?.caption
+      const cap = captions.get(files[i])?.caption ?? `Page ${page}`
+      const email = args.contributorEmail ?? DEFAULT_SUBMITTER_EMAIL
       console.log(`[${page}/${files.length}] ${files[i]} -> page ${page}`)
       console.log(`      upload ${webPath}   (${(webBytes / 1024).toFixed(0)} KB)`)
       console.log(`      upload ${thumbPath} (${(thumbBytes / 1024).toFixed(0)} KB)`)
-      console.log(`      insert photos id=${id} status=approved album_page=${page}${cap ? ` caption="${cap}"` : ''}${note}`)
+      console.log(`      insert photos id=${id} status=approved album_page=${page} caption="${cap}" submitter_email=${email}${note}`)
     }
     console.log(`\nWould set album.page_count=${files.length}, cover_photo_id=page 1.`)
     console.log(`Total bytes that would be uploaded: ${(totalBytes / 1048576).toFixed(2)} MB across ${files.length * 2} objects.`)
@@ -460,9 +469,10 @@ async function main() {
           thumb_path: thumbPath,
           album_id: albumId,
           album_page: page,
-          caption: cap?.caption ?? null,
+          caption: cap?.caption ?? `Page ${page}`,          // caption is NOT NULL
           approximate_date: cap?.approximate_date ?? args.date ?? null,
           submitter_name: args.contributors ?? 'Stake Admin',
+          submitter_email: args.contributorEmail ?? DEFAULT_SUBMITTER_EMAIL, // NOT NULL
           status: 'approved',
         })
         if (error) {
