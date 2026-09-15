@@ -523,8 +523,8 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!file.type.match(/^image\/(jpeg|jpg|png|webp|heic)$/i)) {
-      alert('Please select a valid image file (JPEG, PNG, WebP, or HEIC)')
+    if (!file.type.match(/^image\/(jpeg|jpg|png|webp)$/i)) {
+      alert('Please select a valid image file (JPEG, PNG, or WebP). HEIC is not supported — convert to JPEG first.')
       return
     }
 
@@ -1204,7 +1204,7 @@ export function AdminPortraitsTab({ onActionComplete }: AdminPortraitsTabProps) 
                               <p className="text-sm text-gray-600">Upload a completely new portrait image.</p>
                               <input
                                 type="file"
-                                accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
+                                accept="image/jpeg,image/jpg,image/png,image/webp"
                                 onChange={(e) => {
                                   handlePortraitFileChange(e)
                                   handleCancelCrop()

@@ -35,6 +35,7 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
   const tagSearchRef = useRef<HTMLDivElement>(null)
   const [deleteConfirmState, setDeleteConfirmState] = useState<Record<string, 'none' | 'warning' | 'modal'>>({})
   const [deleteConfirmText, setDeleteConfirmText] = useState<Record<string, string>>({})
+  const [rejectConfirm, setRejectConfirm] = useState<Record<string, boolean>>({})
 
   // Crop-related state
   const [showCropInterface, setShowCropInterface] = useState(false)
@@ -615,6 +616,19 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
     }
   }
 
+  // Two-step confirm: reject deletes the storage object (the only copy), so a
+  // second click is required before it runs. Delete uses a heavier type-DELETE
+  // gate; reject is a routine moderation action, so a single "Are you sure?" is
+  // the proportionate confirm.
+  const handleRejectClick = (photoId: string) => {
+    if (!rejectConfirm[photoId]) {
+      setRejectConfirm((prev) => ({ ...prev, [photoId]: true }))
+    } else {
+      setRejectConfirm((prev) => ({ ...prev, [photoId]: false }))
+      handleReject(photoId)
+    }
+  }
+
   const handleReject = async (photoId: string) => {
     setProcessing(photoId)
     try {
@@ -928,11 +942,16 @@ export function AdminPhotosTab({ onActionComplete }: AdminPhotosTabProps) {
                         Approve
                       </button>
                       <button
-                        onClick={() => handleReject(photo.id)}
+                        onClick={() => handleRejectClick(photo.id)}
                         disabled={processing === photo.id}
-                        className="flex-1 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+                        className={`flex-1 px-3 py-1 rounded text-sm disabled:opacity-50 ${
+                          rejectConfirm[photo.id]
+                            ? 'bg-amber-100 border-2 border-amber-400 text-amber-800 hover:bg-amber-200'
+                            : 'bg-red-600 text-white hover:bg-red-700'
+                        }`}
+                        title={rejectConfirm[photo.id] ? 'Click again to reject — this permanently deletes the uploaded file' : undefined}
                       >
-                        Reject
+                        {rejectConfirm[photo.id] ? 'Are you sure?' : 'Reject'}
                       </button>
                     </>
                   ) : (
