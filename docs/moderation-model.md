@@ -78,6 +78,7 @@ Week to week under this model, a steward **responds to flags**, **skims the dige
 - **The one-pending-portrait-per-person check is not airtight** — two pending portraits were accepted for one person on 2026-09-15.
 - **The contribution form accepts HEIC but the storage bucket rejects it** (JPEG/PNG/WebP only) — HEIC uploads fail.
 - **~40 orphaned storage objects** exist versus database rows — worth a reconciliation sweep someday.
+- **`people.portrait_pending` is dead schema** — nothing ever sets it to `true` (the portrait submit path writes only `portrait_submissions`; admin approve/reject/replace only ever set it `false`, and there is no trigger; 0 of 738 rows are `true`), so the `!portrait_pending` display gates never fire and it cannot signal a pending portrait. The real pending state lives in `portrait_submissions.status`.
 
 ---
 
