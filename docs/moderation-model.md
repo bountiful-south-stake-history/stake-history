@@ -73,11 +73,11 @@ Week to week under this model, a steward **responds to flags**, **skims the dige
 
 ## Known sharp edges
 
-- **Rejecting a photo deletes its stored image with no confirmation** — a single misclick permanently loses a contributor's file.
+- **Rejecting a photo deletes its stored image** — *Resolved in #13:* photo reject now requires a two-step inline confirm before it runs (portrait reject already had a confirm modal; memory reject touches no storage). Reject is **still destructive** after confirming — making it non-destructive (retain the object and sweep old rejects on a schedule) is planned for PR 3.
 - **Suggestions use a `new`/`reviewed` vocabulary**, not the `pending`/`approved` used elsewhere — a small inconsistency to remember when reasoning about that queue.
-- **The one-pending-portrait-per-person check is not airtight** — two pending portraits were accepted for one person on 2026-09-15.
-- **The contribution form accepts HEIC but the storage bucket rejects it** (JPEG/PNG/WebP only) — HEIC uploads fail.
-- **~40 orphaned storage objects** exist versus database rows — worth a reconciliation sweep someday.
+- **Multiple pending portraits per person** — *Resolved by design in #14:* this is intentional, not a conflict — an admin chooses which pending portrait to approve. The submit-time note is informational (the submitter may still add theirs), and AdminPortraitsTab approves or rejects each submission independently, leaving the others pending rather than orphaned. No uniqueness is enforced, deliberately.
+- **The contribution form accepted HEIC but the storage bucket rejects it** (JPEG/PNG/WebP only) — *Resolved in #13:* HEIC/HEIF was removed from the accept lists on both the contribution form and the admin portrait upload, with a "choose JPEG, not HEIC" message. In-browser HEIC→JPEG conversion isn't viable, so blocking plus guidance is the correct fix.
+- **~40 orphaned storage objects** exist versus database rows — *still open.* A read-only report script, `scripts/storage-orphans.ts`, now exists (from #13); Troy runs it with the service-role key for the authoritative list. The actual cleanup sweep has not been done.
 - **`people.portrait_pending` is dead schema** — nothing ever sets it to `true` (the portrait submit path writes only `portrait_submissions`; admin approve/reject/replace only ever set it `false`, and there is no trigger; 0 of 738 rows are `true`), so the `!portrait_pending` display gates never fire and it cannot signal a pending portrait. The real pending state lives in `portrait_submissions.status`.
 
 ---
