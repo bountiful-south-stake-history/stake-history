@@ -1,6 +1,7 @@
 -- Migration: Merge duplicate person records for Erik N. Shegrud (2026-10-18)
--- STATUS: DRAFTED, NOT APPLIED — pending Troy to run by hand in the Supabase SQL
--- Editor (project ref kywsocmgkrckwhnmhtfz) and record in docs/data-changes.md.
+-- STATUS: APPLIED 2026-10-18 by Troy in the Supabase SQL Editor (project ref
+-- kywsocmgkrckwhnmhtfz). Recorded in docs/data-changes.md. Do not re-run (the id
+-- and full_name guards make a re-run a no-op regardless).
 --
 -- Two rows exist for the same man (Troy confirmed):
 --   OLD (keep): 441c0017-ef60-45b7-875e-b118d48a9082  full_name 'Eric N. Shegrud'

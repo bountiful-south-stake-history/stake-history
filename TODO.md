@@ -55,3 +55,8 @@ Deferred work noted during fixes. Not done now — captured so it isn't lost.
   member. Clear it to NULL via a guarded, id-targeted data change. Also consider replacing
   the legacy `'Current'` placeholder on the ~32 active rows with NULL; the UI can show
   "present" from `released_date` being null.
+
+- [ ] **Person-merge support.** No person-merge tool exists. Duplicate people were merged
+  by hand-written SQL (Shegrud, 2026-10-18). If duplicates recur, consider an admin merge
+  function that repoints all person-FK tables in one transaction. Also consider a
+  duplicate-name warning when adding a new person in the release/add flows.
