@@ -1,6 +1,7 @@
 -- Migration: Strip the app-generated "Released <date>" suffix from callings.notes
--- STATUS: DRAFTED, NOT APPLIED — pending Troy to run by hand in the Supabase SQL
--- Editor (project ref kywsocmgkrckwhnmhtfz) and record in docs/data-changes.md.
+-- STATUS: APPLIED 2026-10-18 by Troy in the Supabase SQL Editor (project ref
+-- kywsocmgkrckwhnmhtfz), 3 rows updated. Recorded in docs/data-changes.md. Do not
+-- re-run (the current-notes guards make a re-run a no-op regardless).
 --
 -- Background: the release flow used to append "Released <date>" to notes, so the
 -- public subtitle repeated the release date the date range already shows. The app
