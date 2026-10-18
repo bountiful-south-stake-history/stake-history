@@ -530,6 +530,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
 
     const selectedPositionForLabel = availablePositions.find((p) => p.id === addNewPositionId)
     if (
+      !isPresidencyOrg &&
       orgUsesPresidencyLabels &&
       selectedPositionForLabel?.position_type !== 'president' &&
       !addNewNotes.trim()
@@ -1441,7 +1442,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Presidency Label
-                        {orgUsesPresidencyLabels ? (
+                        {!isPresidencyOrg && orgUsesPresidencyLabels ? (
                           <span className="text-red-500 ml-1">*</span>
                         ) : (
                           <span className="text-gray-400 font-normal ml-1">(optional)</span>
@@ -1457,7 +1458,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                         placeholder="e.g., Hill Presidency"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
-                      {orgUsesPresidencyLabels && !addNewNotes.trim() ? (
+                      {!isPresidencyOrg && orgUsesPresidencyLabels && !addNewNotes.trim() ? (
                         <p className="text-xs text-red-600 mt-1">
                           Required — which stake presidency the new member serves under.
                         </p>
@@ -1493,7 +1494,8 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                   !addNewPersonId ||
                   !addNewPositionId ||
                   !addNewSustainedDate ||
-                  (orgUsesPresidencyLabels &&
+                  (!isPresidencyOrg &&
+                    orgUsesPresidencyLabels &&
                     availablePositions.find((p) => p.id === addNewPositionId)?.position_type !== 'president' &&
                     !addNewNotes.trim())
                 }

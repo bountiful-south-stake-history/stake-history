@@ -1,6 +1,7 @@
 -- Migration: Fix High Council release-and-replace fallout (2026-10-18)
--- STATUS: DRAFTED, NOT APPLIED. Pending Troy to run by hand in the Supabase SQL
--- Editor (project ref kywsocmgkrckwhnmhtfz) and record in docs/data-changes.md.
+-- STATUS: APPLIED 2026-10-18 by Troy in the Supabase SQL Editor (project ref
+-- kywsocmgkrckwhnmhtfz). Recorded in docs/data-changes.md. Do not re-run (the
+-- WHERE guards make a re-run a no-op regardless).
 --
 -- Background: the "release + add replacement now" flow (handleRelease in
 -- src/components/admin/AdminTransitionsTab.tsx) copied the released member's

@@ -22,3 +22,18 @@ Deferred work noted during fixes. Not done now — captured so it isn't lost.
   within a sequentially numbered org (the bug this branch fixes created exactly that:
   High Council #227 held by both Bawden and Shegrud). Consider a partial unique
   index/constraint scoped to sequential orgs so the app can't reintroduce duplicates.
+
+- [ ] **Compute the max presidency number from an unfiltered query.**
+  `getMaxPresidencyNumber()` reduces over `callings` from `useOrganizationCallings`,
+  which drops redacted people ([useOrganizationCallings.ts](src/hooks/useOrganizationCallings.ts) ~line 36).
+  So a redacted member's number can be reused for a new member, silently creating a
+  duplicate. Compute the max from a query that counts all rows regardless of redaction.
+
+- [ ] **Scope the max to `position_id`.** `getMaxPresidencyNumber()` is org-wide, not
+  per-position. Harmless for the High Council (a single position), but wrong for any
+  future multi-position sequential org, where each position should number independently.
+
+- [ ] **Retire the `orgUsesPresidencyLabels` regex.** The UI detects label-using orgs by
+  running a regex over `callings.notes`. It is a stopgap that goes away once the
+  dedicated presidency-label column (first item above) exists — switch the check to that
+  column.
