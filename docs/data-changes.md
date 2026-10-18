@@ -17,3 +17,9 @@ Convention: one entry per executed script. Never re-run a listed script. Add the
 | 2026-09-15 | `migrations/20260915150000_policy_cleanup.sql` | Three RLS cleanups: (1) drops the permissive `people` public SELECT `"Public read people"` (`USING true`) so redaction is enforced at the API (`"Public read access to people"` `redacted=false` remains); (2) scopes the three `{public}` admin ALL policies (`people`, `organizations`, `callings`) `TO authenticated`; (3) gates `suggestions` INSERT to `WITH CHECK (status='new')`. Ordered so the admin `people` policy is recreated before the permissive SELECT is dropped. | Applied in SQL Editor 2026-09-15. Live re-verify: the three admin ALL policies are now `{authenticated}`, `people` has only `"Public read access to people"` (`redacted=false`) as its public SELECT (the `USING true` policy is gone), `suggestions` INSERT is `WITH CHECK (status='new')`. Troy: (a) person search + person page OK signed out and in; (b) ward page callings present; (c) Manage Callings + Fix Names load with data; (d) anon `GET people` returned a row; (e) anon `POST suggestions status='reviewed'` → 42501. |
 
 Earlier hand-run migrations (pre-2026-09-14) exist in `supabase/` but were not logged here; see each file's header.
+
+## Drafted, not yet applied
+
+| Drafted | Script | What it will change | Status |
+|---|---|---|---|
+| 2026-10-18 | `migration_fix_hc_release_replace_2026-10-18.sql` | High Council cleanup from the release-and-replace bug: Erik N. Shegrud `presidency_number` 227 → 237 (removes the duplicate with released Samuel J. Bawden #227) and `notes` → `'Hill Presidency'`; Spencer D. Arntsen `notes` → `'Hill Presidency'`. Rows targeted by id; each UPDATE guards on the current value so a rerun changes 0 rows. | **DRAFTED, NOT APPLIED — pending Troy.** Includes before/after SELECTs and a duplicate check. Move to the executed table above once run. |
