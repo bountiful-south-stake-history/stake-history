@@ -36,6 +36,10 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
   const [replacementPersonName, setReplacementPersonName] = useState('')
   const [replacementSearchTerm, setReplacementSearchTerm] = useState('')
   const [replacementSustainedDate, setReplacementSustainedDate] = useState('')
+  // Presidency label for a sequential-org replacement (e.g. High Council). Kept
+  // separate from the released member's note so it is never carried forward.
+  const [replacementNotes, setReplacementNotes] = useState('')
+  const [replacementNotesTouched, setReplacementNotesTouched] = useState(false)
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set())
   const [sustainedDate, setSustainedDate] = useState('')
   const [newLeadership, setNewLeadership] = useState<NewLeadershipMember[]>([
@@ -62,6 +66,9 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
   const [addNewSustainedDate, setAddNewSustainedDate] = useState('')
   const [addNewPositionId, setAddNewPositionId] = useState<string>('')
   const [addNewNotes, setAddNewNotes] = useState('')
+  // Tracks whether the user has edited the label, so the async stake-president
+  // default can backfill an untouched empty field without clobbering input.
+  const [addNewNotesTouched, setAddNewNotesTouched] = useState(false)
   const [availablePositions, setAvailablePositions] = useState<Position[]>([])
   const [currentStakePresidentName, setCurrentStakePresidentName] = useState<string>('')
 
@@ -91,6 +98,15 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
     const num = calling.presidency_number ?? 0
     return num > max ? num : max
   }, 0)
+
+  // Does this org record a "<Name> Presidency" label in notes? Derived from the
+  // org's own callings so the label field is shown/required only where it applies.
+  // Today only the High Council uses this convention; the pattern anchors on a
+  // capitalized surname so prose notes ("...stake mission presidency merged...")
+  // don't count.
+  const orgUsesPresidencyLabels = callings.some(
+    (c) => !!c.notes && /^[A-Z][A-Za-z.'-]*\s+Presidency\b/.test(c.notes.trim())
+  )
 
   const currentCallings = callings
     .filter((c) => !c.released_date)
@@ -226,6 +242,37 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
     }
   }, [organizations])
 
+  // The stake-president lookup is async, so the label default can be empty when a
+  // modal first opens. Backfill it once the name resolves — but only while the
+  // field still applies, is empty, and the user hasn't edited it.
+  useEffect(() => {
+    if (
+      showReleaseModal &&
+      addReplacement &&
+      !isPresidencyOrg &&
+      orgUsesPresidencyLabels &&
+      !replacementNotesTouched &&
+      !replacementNotes &&
+      currentStakePresidentName
+    ) {
+      setReplacementNotes(currentStakePresidentName)
+    }
+  }, [
+    showReleaseModal,
+    addReplacement,
+    isPresidencyOrg,
+    orgUsesPresidencyLabels,
+    replacementNotesTouched,
+    replacementNotes,
+    currentStakePresidentName,
+  ])
+
+  useEffect(() => {
+    if (showAddNewModal && !addNewNotesTouched && !addNewNotes && currentStakePresidentName) {
+      setAddNewNotes(currentStakePresidentName)
+    }
+  }, [showAddNewModal, addNewNotesTouched, addNewNotes, currentStakePresidentName])
+
   // When the org type doesn't imply a leader title, the batch modal must offer a
   // choice. Populate it from president-type positions ordered by sort_order.
   const needsBatchLeaderTitle = !!selectedOrg && leaderTitleForOrg(selectedOrg) === null
@@ -266,6 +313,12 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
 
     if (addReplacement && (!replacementPersonId || !replacementSustainedDate)) {
       alert('Please select a replacement person and enter a sustained date')
+      return
+    }
+
+    const replacementNeedsLabel = addReplacement && !isPresidencyOrg && orgUsesPresidencyLabels
+    if (replacementNeedsLabel && !replacementNotes.trim()) {
+      alert('Please enter a presidency label for the replacement (e.g. "Hill Presidency")')
       return
     }
 
@@ -312,16 +365,41 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
 
       // Add replacement if requested
       if (addReplacement && replacementPersonId && replacementSustainedDate) {
+        // Presidency orgs share one number across the whole cohort, so a replacement
+        // keeps the released member's number. Sequentially numbered orgs (e.g. High
+        // Council) give every member their own number, so the replacement takes the
+        // next free number — reusing the released member's would create a duplicate.
+        const replacementPresidencyNumber = isPresidencyOrg
+          ? showReleaseModal.presidency_number
+          : getMaxPresidencyNumber() + 1
+
+        const replacementInsert: {
+          person_id: string
+          organization_id: string
+          position_id: string
+          presidency_number: number
+          sustained_date: string
+          sustained_precision: string
+          notes?: string
+        } = {
+          person_id: replacementPersonId,
+          organization_id: showReleaseModal.organization_id,
+          position_id: showReleaseModal.position_id,
+          presidency_number: replacementPresidencyNumber,
+          sustained_date: replacementSustainedDate,
+          sustained_precision: 'exact',
+        }
+
+        // Label-using sequential orgs record which stake presidency the member
+        // serves under in notes. This is always the CURRENT presidency, never the
+        // released member's old label.
+        if (replacementNeedsLabel && replacementNotes.trim()) {
+          replacementInsert.notes = replacementNotes.trim()
+        }
+
         const { data: newCalling, error: insertError } = await supabase
           .from('callings')
-          .insert({
-            person_id: replacementPersonId,
-            organization_id: showReleaseModal.organization_id,
-            position_id: showReleaseModal.position_id,
-            presidency_number: showReleaseModal.presidency_number,
-            sustained_date: replacementSustainedDate,
-            sustained_precision: 'exact',
-          })
+          .insert(replacementInsert)
           .select()
           .single()
 
@@ -333,14 +411,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
             record_id: newCalling.id,
             action: 'add_calling',
             old_values: null,
-            new_values: {
-              person_id: replacementPersonId,
-              organization_id: showReleaseModal.organization_id,
-              position_id: showReleaseModal.position_id,
-              presidency_number: showReleaseModal.presidency_number,
-              sustained_date: replacementSustainedDate,
-              sustained_precision: 'exact',
-            },
+            new_values: replacementInsert,
             performed_by: user.id,
             performed_at: new Date().toISOString(),
           })
@@ -354,6 +425,8 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
       setReplacementPersonName('')
       setReplacementSearchTerm('')
       setReplacementSustainedDate('')
+      setReplacementNotes('')
+      setReplacementNotesTouched(false)
       onActionComplete?.()
       window.location.reload()
     } catch (err) {
@@ -455,6 +528,17 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
       return
     }
 
+    const selectedPositionForLabel = availablePositions.find((p) => p.id === addNewPositionId)
+    if (
+      !isPresidencyOrg &&
+      orgUsesPresidencyLabels &&
+      selectedPositionForLabel?.position_type !== 'president' &&
+      !addNewNotes.trim()
+    ) {
+      alert('Please enter a presidency label (e.g. "Hill Presidency")')
+      return
+    }
+
     setProcessing('add-new')
     try {
       // Get the selected position to check its type
@@ -513,6 +597,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
       setAddNewSustainedDate('')
       setAddNewPositionId(availablePositions.length === 1 ? availablePositions[0].id : '')
       setAddNewNotes('')
+      setAddNewNotesTouched(false)
       onActionComplete?.()
       window.location.reload()
     } catch (err) {
@@ -1013,6 +1098,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                       setAddNewSustainedDate('')
                       setAddNewPositionId(availablePositions.length === 1 ? availablePositions[0].id : '')
                       setAddNewNotes(currentStakePresidentName)
+                      setAddNewNotesTouched(false)
                       setShowAddNewModal(true)
                     }}
                     className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
@@ -1068,6 +1154,16 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                     if (e.target.checked && !replacementSustainedDate && releaseDate) {
                       setReplacementSustainedDate(releaseDate)
                     }
+                    if (
+                      e.target.checked &&
+                      !isPresidencyOrg &&
+                      orgUsesPresidencyLabels &&
+                      !replacementNotesTouched &&
+                      !replacementNotes &&
+                      currentStakePresidentName
+                    ) {
+                      setReplacementNotes(currentStakePresidentName)
+                    }
                   }}
                   className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
@@ -1113,6 +1209,31 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
+
+                  {!isPresidencyOrg && orgUsesPresidencyLabels && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Presidency Label <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={replacementNotes}
+                        onChange={(e) => {
+                          setReplacementNotes(e.target.value)
+                          setReplacementNotesTouched(true)
+                        }}
+                        placeholder="e.g., Hill Presidency"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      {!replacementNotes.trim() ? (
+                        <p className="text-xs text-red-600 mt-1">
+                          Required — which stake presidency the new member serves under.
+                        </p>
+                      ) : currentStakePresidentName && replacementNotes === currentStakePresidentName ? (
+                        <p className="text-xs text-green-600 mt-1">Auto-filled from current Stake President</p>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1127,6 +1248,8 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                   setReplacementPersonName('')
                   setReplacementSearchTerm('')
                   setReplacementSustainedDate('')
+                  setReplacementNotes('')
+                  setReplacementNotesTouched(false)
                 }}
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
@@ -1135,9 +1258,10 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
               <button
                 onClick={handleRelease}
                 disabled={
-                  processing === showReleaseModal.id || 
-                  !releaseDate || 
-                  (addReplacement && (!replacementPersonId || !replacementSustainedDate))
+                  processing === showReleaseModal.id ||
+                  !releaseDate ||
+                  (addReplacement && (!replacementPersonId || !replacementSustainedDate)) ||
+                  (addReplacement && !isPresidencyOrg && orgUsesPresidencyLabels && !replacementNotes.trim())
                 }
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
               >
@@ -1318,18 +1442,29 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Presidency Label
-                        <span className="text-gray-400 font-normal ml-1">(optional)</span>
+                        {!isPresidencyOrg && orgUsesPresidencyLabels ? (
+                          <span className="text-red-500 ml-1">*</span>
+                        ) : (
+                          <span className="text-gray-400 font-normal ml-1">(optional)</span>
+                        )}
                       </label>
                       <input
                         type="text"
                         value={addNewNotes}
-                        onChange={(e) => setAddNewNotes(e.target.value)}
+                        onChange={(e) => {
+                          setAddNewNotes(e.target.value)
+                          setAddNewNotesTouched(true)
+                        }}
                         placeholder="e.g., Hill Presidency"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
-                      {currentStakePresidentName && addNewNotes === currentStakePresidentName && (
+                      {!isPresidencyOrg && orgUsesPresidencyLabels && !addNewNotes.trim() ? (
+                        <p className="text-xs text-red-600 mt-1">
+                          Required — which stake presidency the new member serves under.
+                        </p>
+                      ) : currentStakePresidentName && addNewNotes === currentStakePresidentName ? (
                         <p className="text-xs text-green-600 mt-1">Auto-filled from current Stake President</p>
-                      )}
+                      ) : null}
                     </div>
                   </>
                 )}
@@ -1346,6 +1481,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
                   setAddNewSustainedDate('')
                   setAddNewPositionId(availablePositions.length === 1 ? availablePositions[0].id : '')
                   setAddNewNotes('')
+                  setAddNewNotesTouched(false)
                 }}
                 className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
               >
@@ -1353,7 +1489,16 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
               </button>
               <button
                 onClick={handleAddNew}
-                disabled={processing === 'add-new' || !addNewPersonId || !addNewPositionId || !addNewSustainedDate}
+                disabled={
+                  processing === 'add-new' ||
+                  !addNewPersonId ||
+                  !addNewPositionId ||
+                  !addNewSustainedDate ||
+                  (!isPresidencyOrg &&
+                    orgUsesPresidencyLabels &&
+                    availablePositions.find((p) => p.id === addNewPositionId)?.position_type !== 'president' &&
+                    !addNewNotes.trim())
+                }
                 className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50"
               >
                 {processing === 'add-new' ? 'Saving...' : 'Save'}
