@@ -19,3 +19,9 @@ Convention: one entry per executed script. Never re-run a listed script. Add the
 | 2026-10-18 | `migration_strip_release_suffix_2026-10-18.sql` | Stripped the app-generated `" Released 18 October 2026"` suffix from `callings.notes` on 3 High Council rows: `cdf7f8c1…` (Simeon J. Wolfgramm) and `fd8b461c…` (Samuel J. Bawden) → `'Anderson Presidency'`, `ffd1cafe…` (Andrew J. Maudsley) → `'Hill Presidency'`. Targeted by id, guarded on each row's exact current notes (single `WITH … UPDATE … RETURNING`). Hand-written release history left untouched. | Applied by Troy in Supabase Studio, 2026-10-18, **3 rows**. Live re-verify (CC, read-only): the 3 ids now read "Anderson Presidency", "Anderson Presidency", "Hill Presidency"; no calling's notes match the app pattern `"<label> Released <d Month yyyy>"` any more. |
 
 Earlier hand-run migrations (pre-2026-09-14) exist in `supabase/` but were not logged here; see each file's header.
+
+## Drafted, not yet applied
+
+| Drafted | Script | What it will change | Status |
+|---|---|---|---|
+| 2026-10-18 | `migration_merge_shegrud_2026-10-18.sql` | Merges two duplicate person rows for the same man: repoints every person reference from the NEW row (`a36f6251…` "Erik N. Shegrud", created today as High Councilor #238) to the OLD row (`441c0017…` "Eric N. Shegrud", holds the Bountiful 20th Ward counselor history) across all 11 person-FK tables, renames the OLD row to the correct `'Erik N. Shegrud'` (guarded on the current misspelling), then deletes the NEW row (guarded by id + full_name). Only `callings` actually has rows to move (1). Wrapped in `BEGIN`/`COMMIT`. Historical `audit_log` JSON left as-is. No callings released or changed. | **DRAFTED, NOT APPLIED — pending Troy.** Ends with a single verification SELECT (expected 3 calling rows under one "Erik N. Shegrud", `new_id_refs_remaining = 0`, `new_person_rows_remaining = 0`). Move to the applied table once run. |
