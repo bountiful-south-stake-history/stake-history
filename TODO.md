@@ -37,3 +37,15 @@ Deferred work noted during fixes. Not done now — captured so it isn't lost.
   running a regex over `callings.notes`. It is a stopgap that goes away once the
   dedicated presidency-label column (first item above) exists — switch the check to that
   column.
+
+## Maintenance
+
+- [ ] **Triage Dependabot alerts.** GitHub reports 11 vulnerabilities on the default
+  branch (4 high, 7 moderate) as of 2026-10-18:
+  <https://github.com/bountiful-south-stake-history/stake-history/security/dependabot>.
+  Review, bump the affected deps, and confirm `npm run build` still passes.
+
+- [ ] **Restore a runnable lint.** `npm run lint` currently fails because
+  `eslint.config.js` imports `typescript-eslint`, which isn't installed (the package is
+  missing from `devDependencies`). Add it (and any other configured plugins) so lint runs
+  in CI and locally; today only `tsc` via `npm run build` catches type errors.
