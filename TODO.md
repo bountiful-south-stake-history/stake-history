@@ -49,3 +49,9 @@ Deferred work noted during fixes. Not done now — captured so it isn't lost.
   `eslint.config.js` imports `typescript-eslint`, which isn't installed (the package is
   missing from `devDependencies`). Add it (and any other configured plugins) so lint runs
   in CI and locally; today only `tsc` via `npm run build` catches type errors.
+
+- [ ] **Clear the legacy `'Current'` placeholder from notes.** One RELEASED calling
+  (Stake Sunday School) still has `notes = 'Current'`, which shows "Current" on a released
+  member. Clear it to NULL via a guarded, id-targeted data change. Also consider replacing
+  the legacy `'Current'` placeholder on the ~32 active rows with NULL; the UI can show
+  "present" from `released_date` being null.

@@ -20,6 +20,10 @@ The Bountiful South Stake history site — an interactive record of leadership c
 - `docs/data-changes.md` — the log of every hand-applied migration.
 - `docs/admin-remediation-plan.md` — decisions, priorities, and closed/open security findings.
 
+## Data conventions
+
+- `callings.notes` holds only the service-time label/notes (e.g. "Hill Presidency"). Release info lives in `released_date` + the audit log, never in `notes`. The legacy `'Current'` placeholder is not a real note and is cleared on release.
+
 ## State as of 2026-09-15
 
 - **Albums:** schema is live; the import script `scripts/import-album.ts` is ready (requires `--contributor-email`). **No album UI yet** — albums are made visible by a manual `UPDATE albums SET status='approved'` for now.

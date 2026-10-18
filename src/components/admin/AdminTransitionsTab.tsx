@@ -4,7 +4,7 @@ import { useOrganizations } from '../../hooks/useOrganizations'
 import { useOrganizationCallings } from '../../hooks/useOrganizationCallings'
 import { usePeopleSearch } from '../../hooks/usePeopleSearch'
 import { useAuth } from '../../hooks/useAuth'
-import { formatDate, formatDateLong } from '../../lib/utils'
+import { formatDate } from '../../lib/utils'
 import { leaderTitleForOrg, resolvePositionIds } from '../../lib/positions'
 import type { Person, Position, Calling } from '../../lib/types'
 
@@ -334,18 +334,18 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
         notes: showReleaseModal.notes,
       }
 
-      // Release the current person, stripping the 'Current' status marker while
-      // preserving any real note, mirroring the batch release treatment.
-      const prior =
-        showReleaseModal.notes && showReleaseModal.notes !== 'Current' ? showReleaseModal.notes : null
-      const newNotes = `${prior ? `${prior} ` : ''}Released ${formatDateLong(releaseDate)}`
+      // On release, notes keep the service-time label unchanged (e.g. "Hill
+      // Presidency"). The release is recorded by released_date and the audit log,
+      // never in notes. The only exception is the legacy 'Current' placeholder,
+      // which is not a real note and is cleared on release.
+      const preservedNotes = showReleaseModal.notes === 'Current' ? null : showReleaseModal.notes ?? null
 
       const { error: updateError } = await supabase
         .from('callings')
         .update({
           released_date: releaseDate,
           released_precision: 'exact',
-          notes: newNotes,
+          notes: preservedNotes,
         })
         .eq('id', showReleaseModal.id)
 
@@ -357,7 +357,7 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
           record_id: showReleaseModal.id,
           action: 'release_calling',
           old_values: oldValues,
-          new_values: { ...oldValues, released_date: releaseDate, released_precision: 'exact', notes: newNotes },
+          new_values: { ...oldValues, released_date: releaseDate, released_precision: 'exact', notes: preservedNotes },
           performed_by: user.id,
           performed_at: new Date().toISOString(),
         })
@@ -755,20 +755,19 @@ export function AdminTransitionsTab({ onActionComplete }: AdminTransitionsTabPro
       }
 
       if (selectedMembers.size > 0) {
-        // Release each outgoing row and, mirroring
-        // COALESCE(NULLIF(notes,'Current') || ' ', '') || 'Released <date>',
-        // strip the 'Current' status marker while preserving any real note.
+        // Release each outgoing row. Notes keep the service-time label unchanged;
+        // the release lives in released_date and the audit log, never in notes.
+        // The legacy 'Current' placeholder is not a real note and is cleared.
         const releaseResults = await Promise.all(
           Array.from(selectedMembers).map((id) => {
             const existing = callings.find((c) => c.id === id)
-            const prior = existing?.notes && existing.notes !== 'Current' ? existing.notes : null
-            const newNotes = `${prior ? `${prior} ` : ''}Released ${formatDateLong(releaseDate)}`
+            const preservedNotes = existing?.notes === 'Current' ? null : existing?.notes ?? null
             return supabase
               .from('callings')
               .update({
                 released_date: releaseDate,
                 released_precision: 'exact',
-                notes: newNotes,
+                notes: preservedNotes,
               })
               .eq('id', id)
           })
