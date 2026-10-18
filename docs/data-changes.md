@@ -18,3 +18,9 @@ Convention: one entry per executed script. Never re-run a listed script. Add the
 | 2026-10-18 | `migration_fix_hc_release_replace_2026-10-18.sql` | High Council cleanup from the release-and-replace bug: Erik N. Shegrud (`f3009f32…`) `presidency_number` 227 → 237 (removes the duplicate with released Samuel J. Bawden #227) and `notes` → `'Hill Presidency'`; Spencer D. Arntsen (`b545b60e…`) `notes` → `'Hill Presidency'`. Rows targeted by id; each UPDATE guards on the current value so a re-run changes 0 rows. | Applied by Troy in Supabase Studio, 2026-10-18, via `supabase/migration_fix_hc_release_replace_2026-10-18.sql`. Live re-verify (CC, read-only): (a) 0 duplicate `presidency_number` rows in the High Council; (b) #227 held only by Samuel J. Bawden (released 2026-10-18); (c) max High Council `presidency_number` now 237. Studio final check confirmed Shegrud 237 / Hill Presidency, Arntsen 236 / Hill Presidency. |
 
 Earlier hand-run migrations (pre-2026-09-14) exist in `supabase/` but were not logged here; see each file's header.
+
+## Drafted, not yet applied
+
+| Drafted | Script | What it will change | Status |
+|---|---|---|---|
+| 2026-10-18 | `migration_strip_release_suffix_2026-10-18.sql` | Strips the app-generated `" Released 18 October 2026"` suffix from `callings.notes` on exactly 3 High Council rows (`cdf7f8c1…`, `fd8b461c…`, `ffd1cafe…`): "Anderson Presidency Released 18 October 2026" → "Anderson Presidency" (×2) and "Hill Presidency Released 18 October 2026" → "Hill Presidency". Targets by id, guards on each row's exact current notes, single `WITH … UPDATE … RETURNING`. Hand-written release history (realignment/discontinued-ward notes, "Released to become …") is explicitly left untouched. | **DRAFTED, NOT APPLIED — pending Troy.** Expected 3 rows. Move to the applied table above once run. |
